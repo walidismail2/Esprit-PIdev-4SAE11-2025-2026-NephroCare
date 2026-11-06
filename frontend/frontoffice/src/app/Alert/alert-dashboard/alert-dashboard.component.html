@@ -1,0 +1,132 @@
+<div class="container mt-4">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📊 Dashboard Global</h2>
+        <button class="btn btn-primary" (click)="goToAlerts()">Voir toutes les alertes</button>
+    </div>
+
+    <!-- KPI -->
+    <div class="row mb-4">
+
+        <div class="col-md-3">
+            <div class="card bg-primary text-white shadow text-center">
+                <div class="card-body">
+                    <h5>Total Alertes</h5>
+                    <h2>{{stats.total || 0}}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-success text-white shadow text-center">
+                <div class="card-body">
+                    <h5>Résolues</h5>
+                    <h2>{{stats.resolved || 0}}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark shadow text-center">
+                <div class="card-body">
+                    <h5>En Attente</h5>
+                    <h2>{{stats.pending || 0}}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-danger text-white shadow text-center">
+                <div class="card-body">
+                    <h5>Critiques (24h)</h5>
+                    <h2>{{recentCritical.length}}</h2>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="row">
+
+        <!-- 📊 CHART SEVERITY -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white d-flex justify-content-between">
+                    <span>Statistiques Sévérité</span>
+                    <i class="bi bi-pie-chart-fill"></i>
+                </div>
+                <div class="card-body">
+                    <canvas baseChart [data]="chartData" [type]="'pie'">
+                    </canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🧪 CHART TEST TYPE -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-indigo text-white d-flex justify-content-between" style="background: #6366f1;">
+                    <span>Répartition par Paramètre</span>
+                    <i class="bi bi-bar-chart-fill"></i>
+                </div>
+                <div class="card-body">
+                    <canvas baseChart [data]="testTypeChartData" [type]="'bar'" [options]="{ responsive: true, scales: { y: { beginAtZero: true } } }">
+                    </canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+
+        <!-- 🚨 ALERTS -->
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    Alertes Critiques Récentes
+                </div>
+
+                <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+
+                    <!-- Loading -->
+                    <div *ngIf="loading" class="p-3 text-center">
+                        <span class="spinner-border spinner-border-sm"></span> Chargement...
+                    </div>
+
+                    <!-- Empty -->
+                    <div *ngIf="!loading && recentCritical.length === 0" class="p-4 text-center text-muted">
+                        ✅ Aucune alerte critique
+                    </div>
+
+                    <!-- List -->
+                    <div *ngIf="!loading && recentCritical.length > 0" class="list-group list-group-flush">
+
+                        <div class="list-group-item" *ngFor="let a of recentCritical">
+
+                            <div class="d-flex justify-content-between">
+                                <strong class="text-danger">{{a.type}}</strong>
+                                <small>{{a.createdAt | date:'short'}}</small>
+                            </div>
+
+                            <p class="mb-1">{{a.message}}</p>
+
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">Matricule: {{a.patientMatricule}}</small>
+
+                                <span class="badge" [ngClass]="a.resolved ? 'bg-success' : 'bg-warning text-dark'">
+                                    {{a.resolved ? 'Résolue' : 'En attente'}}
+                                </span>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>

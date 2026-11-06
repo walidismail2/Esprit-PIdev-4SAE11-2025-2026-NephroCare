@@ -1,0 +1,148 @@
+<app-modal
+        [open]="open"
+        title="Session Report"
+        width="lg"
+        [busy]="busy"
+        (closed)="closed.emit()"
+>
+    <div *ngIf="error" class="mb-4 rounded border border-red-300 bg-red-50 px-4 py-3 text-red-700">
+        <strong>Error!</strong> {{ error }}
+    </div>
+
+    <ng-container *ngIf="report">
+        <!-- Top summary -->
+        <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <div class="text-sm text-gray-500 dark:text-gray-300">
+                    Patient:
+                    <span class="font-medium text-black dark:text-white">
+        {{ json('summary.patientName') || '-' }}
+      </span>
+                </div>
+
+                <div class="text-sm text-gray-500 dark:text-gray-300">
+                    Nurse:
+                    <span class="font-medium text-black dark:text-white">
+        {{ json('summary.nurseName') || '-' }}
+      </span>
+                </div>
+
+                <div class="text-xs text-gray-500 dark:text-gray-300 mt-1">
+                    {{ json('summary.sessionDate') | date:'medium' }} • {{ json('summary.shift') || '-' }}
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-500 dark:text-gray-300">Adequacy</span>
+                <span
+                        class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                        [ngClass]="isAdequate() ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                >
+      {{ isAdequate() ? 'ADEQUATE' : 'INADEQUATE' }}
+    </span>
+            </div>
+        </div>
+
+        <!-- KPI cards -->
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <div class="rounded border border-stroke p-3 dark:border-strokedark">
+                <div class="text-xs text-gray-500 dark:text-gray-300">URR</div>
+                <div class="mt-1 flex items-baseline gap-2">
+                    <div class="text-xl font-semibold text-black dark:text-white">{{ urrValue() }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-300">%</div>
+                </div>
+                <div class="mt-1 text-xs" [ngClass]="urrOk() ? 'text-green-600' : 'text-red-600'">
+                    {{ urrOk() ? 'PASS' : 'FAIL' }} (≥ {{ report.urrThreshold ?? 65 }})
+                </div>
+            </div>
+
+            <div class="rounded border border-stroke p-3 dark:border-strokedark">
+                <div class="text-xs text-gray-500 dark:text-gray-300">spKt/V</div>
+                <div class="mt-1 text-xl font-semibold text-black dark:text-white">{{ spKtvValue() }}</div>
+                <div class="mt-1 text-xs" [ngClass]="ktvOk() ? 'text-green-600' : 'text-red-600'">
+                    {{ ktvOk() ? 'PASS' : 'FAIL' }} (≥ {{ report.ktvThreshold ?? 1.2 }})
+                </div>
+            </div>
+
+            <div class="rounded border border-stroke p-3 dark:border-strokedark">
+                <div class="text-xs text-gray-500 dark:text-gray-300">eKt/V</div>
+                <div class="mt-1 text-xl font-semibold text-black dark:text-white">{{ eKtvValue() }}</div>
+                <div class="mt-1 text-xs text-gray-500 dark:text-gray-300">Rebound-adjusted</div>
+            </div>
+
+            <div class="rounded border border-stroke p-3 dark:border-strokedark">
+                <div class="text-xs text-gray-500 dark:text-gray-300">UF (calc)</div>
+                <div class="mt-1 flex items-baseline gap-2">
+                    <div class="text-xl font-semibold text-black dark:text-white">{{ ufValue() }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-300">L</div>
+                </div>
+                <div class="mt-1 text-xs text-gray-500 dark:text-gray-300">
+                    Flag: <span class="font-medium text-black dark:text-white">{{ ufFlag() }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sections -->
+        <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <!-- Treatment -->
+            <div class="rounded border border-stroke p-4 dark:border-strokedark">
+                <div class="mb-2 text-sm font-semibold text-black dark:text-white">Treatment</div>
+                <div class="space-y-1 text-sm text-gray-700 dark:text-gray-200">
+                    <div>Type: <span class="font-medium">{{ json('treatment.dialysisType') }}</span></div>
+                    <div>Access: <span class="font-medium">{{ json('treatment.accessType') }}</span></div>
+                    <div>Frequency/week: <span class="font-medium">{{ json('treatment.frequencyPerWeek') }}</span></div>
+                    <div>Prescribed duration: <span class="font-medium">{{ json('treatment.prescribedDurationMinutes') }}</span> min</div>
+                    <div>Target dry weight: <span class="font-medium">{{ json('treatment.targetDryWeight') }}</span> kg</div>
+                </div>
+            </div>
+
+            <!-- Hemodynamics -->
+            <div class="rounded border border-stroke p-4 dark:border-strokedark">
+                <div class="mb-2 text-sm font-semibold text-black dark:text-white">Hemodynamics / Notes</div>
+                <div class="space-y-1 text-sm text-gray-700 dark:text-gray-200">
+                    <div>BP: <span class="font-medium">{{ json('hemodynamics.bloodPressure') || '-' }}</span></div>
+                    <div>Complications: <span class="font-medium">{{ json('hemodynamics.complications') || '-' }}</span></div>
+                </div>
+                <div class="text-sm text-gray-500 dark:text-gray-300">
+                    Risk score: <span class="font-semibold text-black dark:text-white">{{ riskScore() ?? '-' }}</span>/100
+                    • Stability: <span class="font-semibold text-black dark:text-white">{{ stabilityIndex() ?? '-' }}</span>/100
+                </div>            </div>
+        </div>
+
+        <!-- Recommendations -->
+        <div class="mt-4 rounded border border-stroke p-4 dark:border-strokedark">
+            <div class="mb-2 text-sm font-semibold text-black dark:text-white">Recommendations</div>
+            <div class="space-y-3">
+                <div *ngFor="let r of recommendationsList()" class="rounded border border-stroke p-3 dark:border-strokedark">
+                    <div class="flex items-center justify-between">
+                        <div class="font-semibold">{{ r.title }}</div>
+                        <span class="text-xs px-2 py-1 rounded"
+                              [ngClass]="r.severity === 'HIGH' ? 'bg-red-100 text-red-700'
+                    : r.severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-blue-100 text-blue-800'">
+        {{ r.severity }}
+      </span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-500">Evidence: {{ r.evidence }}</div>
+                    <ul class="mt-2 list-disc pl-5 text-sm">
+                        <li *ngFor="let a of r.actions">{{ a }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Raw text (optional) -->
+        <details class="mt-4 rounded border border-stroke p-4 dark:border-strokedark">
+            <summary class="cursor-pointer text-sm font-medium text-black dark:text-white">Raw report</summary>
+            <pre class="mt-3 whitespace-pre-wrap text-xs text-gray-700 dark:text-gray-200">{{ report.reportText }}</pre>
+        </details>
+
+        <div class="mt-4 flex gap-2">
+            <app-button size="sm" variant="outline" (btnClick)="copy()">Copy</app-button>
+            <app-button size="sm" variant="outline" (btnClick)="closed.emit()">Close</app-button>
+            <app-button size="sm" variant="primary" (btnClick)="downloadPdf()">
+                Download PDF
+            </app-button>
+        </div>
+    </ng-container>
+</app-modal>

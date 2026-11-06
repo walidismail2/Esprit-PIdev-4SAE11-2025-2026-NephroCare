@@ -1,0 +1,664 @@
+<div class="pharmacy-page">
+
+  <!-- ── HEADER ── -->
+  <div class="page-header">
+    <div class="page-header__icon"><i class="fas fa-hospital-symbol"></i></div>
+    <div>
+      <p class="page-header__sub">Back Office / Admin</p>
+      <h2 class="page-header__title">Pharmacy Management</h2>
+    </div>
+  </div>
+
+  <!-- ── TABS ── -->
+  <div class="tabs">
+    <button class="tab-btn" [class.active]="activeTab === 'medications'" (click)="activeTab = 'medications'">
+      <i class="fas fa-pills"></i> Medications <span class="tab-count">{{ medications.length }}</span>
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'prescriptions'" (click)="activeTab = 'prescriptions'">
+      <i class="fas fa-file-prescription"></i> Prescriptions <span class="tab-count">{{ prescriptions.length }}</span>
+    </button>
+    <button class="tab-btn tab-btn--stock" [class.active]="activeTab === 'stock'" (click)="activeTab = 'stock'">
+      <i class="fas fa-boxes"></i> Stock
+      <span class="tab-count tab-count--stock" *ngIf="stockStats">{{ stockStats.out }} ⛔</span>
+    </button>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- TAB: MEDICATIONS                            -->
+  <!-- ════════════════════════════════════════════ -->
+  <div *ngIf="activeTab === 'medications'">
+    <div class="card table-card">
+      <div class="card-title">
+        <i class="fas fa-table"></i> Medications List
+        <span class="count-badge">{{ medications.length }} total</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nom</th><th>Dosage</th><th>Voie</th>
+              <th>Stock</th><th>Expiration</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let med of medications; trackBy: trackById">
+              <td>
+                <div class="med-cell">
+                  <div class="med-cell__icon" [class.med-cell__icon--kidney]="isKidneyMed(med.medicationName)">
+                    <i class="fas fa-capsules"></i>
+                  </div>
+                  <div>
+                    <span>{{ med.medicationName }}</span>
+                    <span class="kidney-tag" *ngIf="isKidneyMed(med.medicationName)">
+                      <i class="fas fa-star"></i> Kidney
+                    </span>
+                  </div>
+                </div>
+              </td>
+              <td>{{ med.dosage || '—' }}</td>
+              <td>{{ med.route || '—' }}</td>
+              <td>
+                <div class="stock-cell">
+                  <span class="stock-badge"
+                        [class.ok]="stockLevel(med.quantity) === 'ok'"
+                        [class.low]="stockLevel(med.quantity) === 'low'"
+                        [class.out]="stockLevel(med.quantity) === 'out'">
+                    {{ med.quantity }}
+                  </span>
+                  <div class="mini-bar">
+                    <div class="mini-bar-fill"
+                         [style.width.%]="stockBarWidth(med.quantity)"
+                         [class.fill-ok]="stockLevel(med.quantity) === 'ok'"
+                         [class.fill-low]="stockLevel(med.quantity) === 'low'"
+                         [class.fill-out]="stockLevel(med.quantity) === 'out'">
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td [class.text-danger]="isExpired(med.endDate)">{{ med.endDate | date:'mediumDate' }}</td>
+              <td class="actions">
+                <button class="btn btn-labeled stock-adjust" (click)="openAdjustModal(med)">
+                  <i class="fas fa-sliders-h"></i> Ajuster
+                </button>
+                <button class="btn btn-labeled view" (click)="openMedHistory(med); activeTab = 'stock'">
+                  <i class="fas fa-history"></i> Historique
+                </button>
+                <button class="btn btn-labeled delete" (click)="deleteMedication(med.id)">
+                  <i class="fas fa-trash-alt"></i> Supprimer
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="medications.length === 0">
+              <td colspan="6" class="empty-row">
+                <i class="fas fa-prescription-bottle"></i>
+                <p>No medications yet.</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- TAB: PRESCRIPTIONS                          -->
+  <!-- ════════════════════════════════════════════ -->
+  <div *ngIf="activeTab === 'prescriptions'">
+
+    <div class="card form-card">
+      <div class="card-title">
+        <i class="fas fa-{{ selectedPrescriptionId ? 'pen' : 'plus-circle' }}"></i>
+        {{ selectedPrescriptionId ? 'Edit Prescription' : 'New Prescription' }}
+        <span class="mode-badge" [class.edit-mode]="selectedPrescriptionId">
+          {{ selectedPrescriptionId ? 'Edit Mode' : 'New Entry' }}
+        </span>
+      </div>
+
+      <form [formGroup]="prescriptionForm" (ngSubmit)="submitPrescription()">
+        <div class="section-label"><i class="fas fa-info-circle"></i> General Info</div>
+
+        <div class="form-grid">
+
+          <!-- CHAMP PATIENT — Dropdown Keycloak -->
+          <div class="form-group user-select-group">
+            <label for="rx-user-search"><i class="fas fa-user"></i> Patient</label>
+            <div class="user-search-wrap">
+              <i class="fas fa-search user-search-icon"></i>
+              <input id="rx-user-search" name="rxUserSearch" type="text" class="user-search-input"
+                     [(ngModel)]="userSearchQuery" [ngModelOptions]="{ standalone: true }"
+                     (input)="onUserSearch()"
+                     (focus)="showUserDropdown = true; filteredUsers = keycloakUsers"
+                     (blur)="closeUserDropdown()"
+                     placeholder="Rechercher un patient..." autocomplete="off" />
+              <button type="button" class="user-clear-btn" *ngIf="userSearchQuery" (mousedown)="clearUser()">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="user-dropdown" *ngIf="showUserDropdown">
+              <div *ngIf="filteredUsers.length === 0" class="user-no-result">
+                <i class="fas fa-search"></i> Aucun patient trouvé
+              </div>
+              <div class="user-option" *ngFor="let u of filteredUsers.slice(0, 10)" (mousedown)="selectUser(u)">
+                <div class="uo-avatar">{{ (u.firstName?.[0] || u.username[0] || '?').toUpperCase() }}</div>
+                <div class="uo-info">
+                  <span class="uo-name">{{ u.firstName }} {{ u.lastName }}</span>
+                  <span class="uo-email">{{ u.email }}</span>
+                </div>
+                <span class="uo-tag">@{{ u.username }}</span>
+              </div>
+            </div>
+            <input id="rx-user-id" name="rxUserId" type="hidden" formControlName="userId" />
+            <small class="user-id-confirm" *ngIf="prescriptionForm.get('userId')?.value">
+              <i class="fas fa-check-circle"></i>
+              ID : {{ prescriptionForm.get('userId')?.value | slice:0:20 }}...
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="rx-prescribed-by"><i class="fas fa-user-md"></i> Prescribed By</label>
+            <input id="rx-prescribed-by" name="prescribedBy" type="text" formControlName="prescribedBy" placeholder="Doctor name" />
+          </div>
+          <div class="form-group">
+            <label for="rx-consultation-id"><i class="fas fa-stethoscope"></i> Consultation ID</label>
+            <input id="rx-consultation-id" name="consultationId" type="text" formControlName="consultationId" placeholder="Optional" />
+          </div>
+          <div class="form-group">
+            <label for="rx-status"><i class="fas fa-tag"></i> Status</label>
+            <select id="rx-status" name="status" formControlName="status">
+              <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="rx-prescription-date"><i class="fas fa-calendar-alt"></i> Prescription Date</label>
+            <input id="rx-prescription-date" name="prescriptionDate" type="date" formControlName="prescriptionDate"
+                   [min]="today()" (change)="onPrescriptionDateChange()" />
+            <small class="field-error"
+                   *ngIf="prescriptionForm.get('prescriptionDate')?.errors?.['pastDate'] &&
+                          prescriptionForm.get('prescriptionDate')?.touched">
+              ⚠️ La date ne peut pas être dans le passé
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="rx-valid-until"><i class="fas fa-calendar-check"></i> Valid Until</label>
+            <input id="rx-valid-until" name="validUntil" type="date" formControlName="validUntil"
+                   [min]="getPrescriptionMinValidUntil()" />
+            <small class="field-error"
+                   *ngIf="prescriptionForm.errors?.['endBeforeStart'] &&
+                          prescriptionForm.get('validUntil')?.touched">
+              ⚠️ La date de fin doit être après la date de début
+            </small>
+          </div>
+
+          <div class="form-group full">
+            <label for="rx-instructions"><i class="fas fa-align-left"></i> Instructions</label>
+            <textarea id="rx-instructions" name="instructions" formControlName="instructions" placeholder="Special instructions..."></textarea>
+          </div>
+        </div>
+
+        <div class="section-label">
+          <i class="fas fa-pills"></i> Medications
+          <button type="button" class="btn-add-med" (click)="addMedicationRow()">
+            <i class="fas fa-plus"></i> Add
+          </button>
+        </div>
+
+        <div formArrayName="medications">
+          <div *ngFor="let med of medicationsArray.controls; let i = index"
+               [formGroupName]="i" class="med-row">
+            <div class="med-row-header">
+              <span><i class="fas fa-capsules"></i> Medication #{{ i + 1 }}</span>
+              <button type="button" class="btn-remove" (click)="removeMedicationRow(i)">
+                <i class="fas fa-trash-alt"></i> Supprimer
+              </button>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label [attr.for]="'rx-med-name-' + i"><i class="fas fa-pills"></i> Name</label>
+                <select [attr.id]="'rx-med-name-' + i" [attr.name]="'medicationName-' + i" formControlName="medicationName" (change)="onMedicationNameChange(i)">
+                  <option value="" disabled>Select medication</option>
+                  <option *ngFor="let m of KIDNEY_MEDS" [value]="m">{{ m }}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label [attr.for]="'rx-med-dosage-' + i"><i class="fas fa-flask"></i> Dosage</label>
+                <select [attr.id]="'rx-med-dosage-' + i" [attr.name]="'dosage-' + i" formControlName="dosage" *ngIf="getDosages(i).length > 0; else freeDosage">
+                  <option value="" disabled>Select dosage</option>
+                  <option *ngFor="let d of getDosages(i)" [value]="d">{{ d }}</option>
+                </select>
+                <ng-template #freeDosage>
+                  <input [attr.id]="'rx-med-dosage-' + i" [attr.name]="'dosage-' + i" type="text" formControlName="dosage" placeholder="e.g. 500mg" />
+                </ng-template>
+              </div>
+              <div class="form-group">
+                <label [attr.for]="'rx-med-frequency-' + i"><i class="fas fa-redo"></i> Frequency (×/day)</label>
+                <input [attr.id]="'rx-med-frequency-' + i" [attr.name]="'frequency-' + i" type="number" formControlName="frequency" min="1" (input)="enforceMin($event, 1)" placeholder="Min 1" />
+                <small class="field-error" *ngIf="medicationsArray.at(i).get('frequency')?.invalid && medicationsArray.at(i).get('frequency')?.touched">Must be ≥ 1</small>
+              </div>
+              <div class="form-group">
+                <label [attr.for]="'rx-med-route-' + i"><i class="fas fa-route"></i> Route</label>
+                <select [attr.id]="'rx-med-route-' + i" [attr.name]="'route-' + i" formControlName="route">
+                  <option [ngValue]="null" disabled>Select</option>
+                  <option *ngFor="let r of routes" [value]="r">{{ r }}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label [attr.for]="'rx-med-duration-' + i"><i class="fas fa-clock"></i> Duration (days)</label>
+                <input [attr.id]="'rx-med-duration-' + i" [attr.name]="'duration-' + i" type="number" formControlName="duration" min="1" (input)="enforceMin($event, 1)" placeholder="Min 1" />
+                <small class="field-error" *ngIf="medicationsArray.at(i).get('duration')?.invalid && medicationsArray.at(i).get('duration')?.touched">Must be ≥ 1</small>
+              </div>
+              <div class="form-group">
+                <label [attr.for]="'rx-med-quantity-' + i"><i class="fas fa-boxes"></i> Quantity</label>
+                <input [attr.id]="'rx-med-quantity-' + i" [attr.name]="'quantity-' + i" type="number" formControlName="quantity" min="1" (input)="enforceMin($event, 1)" placeholder="Min 1" />
+                <small class="field-error" *ngIf="medicationsArray.at(i).get('quantity')?.invalid && medicationsArray.at(i).get('quantity')?.touched">Must be ≥ 1</small>
+              </div>
+              <div class="form-group">
+                <label [attr.for]="'rx-med-start-date-' + i"><i class="fas fa-calendar-plus"></i> Start Date</label>
+                <input [attr.id]="'rx-med-start-date-' + i" [attr.name]="'startDate-' + i" type="date" formControlName="startDate" [min]="today()" (change)="onMedStartDateChange(i)" />
+              </div>
+              <div class="form-group">
+                <label [attr.for]="'rx-med-end-date-' + i"><i class="fas fa-calendar-alt"></i> End Date</label>
+                <input [attr.id]="'rx-med-end-date-' + i" [attr.name]="'endDate-' + i" type="date" formControlName="endDate" [min]="getMedMinEndDate(i)" />
+                <small class="field-error" *ngIf="medicationsArray.at(i).errors?.['endBeforeStart'] && medicationsArray.at(i).get('endDate')?.touched">
+                  ⚠️ La date de fin doit être après la date de début
+                </small>
+              </div>
+            </div>
+          </div>
+          <div class="no-meds" *ngIf="medicationsArray.length === 0">
+            <i class="fas fa-prescription-bottle"></i>
+            <p>No medications added yet. Click "Add" to include medications.</p>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn cancel" type="button" (click)="resetPrescriptionForm()">
+            <i class="fas fa-times"></i> Annuler
+          </button>
+          <button class="btn primary" type="submit">
+            <i class="fas fa-{{ selectedPrescriptionId ? 'save' : 'plus' }}"></i>
+            {{ selectedPrescriptionId ? 'Mettre à jour' : 'Créer la prescription' }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ════════ Liste prescriptions ════════ -->
+    <div class="card table-card">
+      <div class="card-title">
+        <i class="fas fa-table"></i> Prescriptions List
+        <span class="count-badge">{{ prescriptions.length }} total</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Patient</th><th>Médecin</th>
+              <th>Date</th><th>Valide jusqu'au</th><th>Statut</th><th>Méds</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of prescriptions; trackBy: trackById"
+                [class.row-editing]="p.id === selectedPrescriptionId">
+              <td class="id-cell">{{ p.id | slice:0:8 }}…</td>
+              <td>
+                <div class="patient-cell">
+                  <span class="patient-name">{{ getUserName(p.userId ?? '') }}</span>
+                  <span class="patient-id">{{ p.userId | slice:0:8 }}...</span>
+                </div>
+              </td>
+              <td>{{ p.prescribedBy || '—' }}</td>
+              <td>{{ p.prescriptionDate | date:'mediumDate' }}</td>
+              <td [class.text-danger]="isExpired(p.validUntil)">{{ p.validUntil | date:'mediumDate' }}</td>
+              <td><span class="status-badge" [ngClass]="statusClass(p.status)">{{ p.status }}</span></td>
+              <td><span class="count-pill">{{ p.medications?.length || 0 }}</span></td>
+              <td class="actions">
+                <!-- ✅ Boutons avec icône + label -->
+                <button class="btn btn-labeled view" (click)="viewPrescription(p)">
+                  <i class="fas fa-eye"></i> Voir
+                </button>
+                <button class="btn btn-labeled edit" (click)="editPrescription(p)">
+                  <i class="fas fa-pen"></i> Modifier
+                </button>
+                <select class="status-select" [attr.id]="'rx-list-status-' + p.id" [attr.name]="'listStatus-' + p.id" [value]="p.status"
+                        (change)="updateStatus(p.id!, $any($event.target).value)">
+                  <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+                </select>
+                <button class="btn btn-labeled delete" (click)="deletePrescription(p.id)">
+                  <i class="fas fa-trash-alt"></i> Supprimer
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="prescriptions.length === 0">
+              <td colspan="8" class="empty-row">
+                <i class="fas fa-file-prescription"></i>
+                <p>No prescriptions yet.</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- TAB: STOCK                                  -->
+  <!-- ════════════════════════════════════════════ -->
+  <div *ngIf="activeTab === 'stock'">
+
+    <div class="stock-stats" *ngIf="stockStats">
+      <div class="ss-item ss-total"><div class="ss-icon"><i class="fas fa-pills"></i></div><div class="ss-body"><span class="ss-value">{{ stockStats.total }}</span><span class="ss-label">Total</span></div></div>
+      <div class="ss-item ss-ok"><div class="ss-icon"><i class="fas fa-check-circle"></i></div><div class="ss-body"><span class="ss-value">{{ stockStats.available }}</span><span class="ss-label">In Stock</span></div></div>
+      <div class="ss-item ss-low"><div class="ss-icon"><i class="fas fa-exclamation-triangle"></i></div><div class="ss-body"><span class="ss-value">{{ stockStats.low }}</span><span class="ss-label">Low Stock</span></div></div>
+      <div class="ss-item ss-out"><div class="ss-icon"><i class="fas fa-times-circle"></i></div><div class="ss-body"><span class="ss-value">{{ stockStats.out }}</span><span class="ss-label">Out of Stock</span></div></div>
+      <div class="ss-item ss-moves"><div class="ss-icon"><i class="fas fa-exchange-alt"></i></div><div class="ss-body"><span class="ss-value">{{ stockStats.totalMovements }}</span><span class="ss-label">Movements</span></div></div>
+      <div class="ss-item ss-in"><div class="ss-icon"><i class="fas fa-arrow-down"></i></div><div class="ss-body"><span class="ss-value">{{ stockStats.totalIn }}</span><span class="ss-label">Total IN</span></div></div>
+      <div class="ss-item ss-out-total"><div class="ss-icon"><i class="fas fa-arrow-up"></i></div><div class="ss-body"><span class="ss-value">{{ stockStats.totalOut }}</span><span class="ss-label">Total OUT</span></div></div>
+    </div>
+
+    <!-- Vue historique -->
+    <div *ngIf="historyMed">
+      <div class="history-header">
+        <button class="btn btn-labeled cancel" (click)="closeHistory()">
+          <i class="fas fa-arrow-left"></i> Retour
+        </button>
+        <span class="history-title">
+          <i class="fas fa-history"></i> Historique — <strong>{{ historyMed.medicationName }}</strong>
+        </span>
+        <span class="history-count">{{ medMovements.length }} mouvements</span>
+        <button class="btn btn-labeled stock-adjust" (click)="openAdjustModal(historyMed)">
+          <i class="fas fa-sliders-h"></i> Ajuster le stock
+        </button>
+      </div>
+      <div class="card table-card">
+        <div class="movement-timeline">
+          <div class="mt-empty" *ngIf="medMovements.length === 0"><i class="fas fa-inbox"></i><p>No movements recorded yet.</p></div>
+          <div class="movement-item" *ngFor="let m of medMovements"
+               [class.movement-item--in]="m.type === 'IN'" [class.movement-item--out]="m.type === 'OUT'">
+            <div class="mi-indicator"><div class="mi-dot" [class.mi-dot--in]="m.type === 'IN'" [class.mi-dot--out]="m.type === 'OUT'"><i class="fas" [class.fa-arrow-down]="m.type === 'IN'" [class.fa-arrow-up]="m.type === 'OUT'"></i></div><div class="mi-line"></div></div>
+            <div class="mi-content">
+              <div class="mi-top">
+                <div class="mi-left"><span class="mi-reason"><i class="fas" [ngClass]="'fas ' + reasonIcon(m.reason)"></i> {{ reasonLabel(m.reason) }}</span><span class="mi-note" *ngIf="m.notes">{{ m.notes }}</span></div>
+                <div class="mi-right"><span class="mi-qty" [class.mi-qty--in]="m.type === 'IN'" [class.mi-qty--out]="m.type === 'OUT'">{{ m.type === 'IN' ? '+' : '-' }}{{ m.quantity }}</span><span class="mi-date">{{ m.createdAt | date:'short' }}</span></div>
+              </div>
+              <div class="mi-bottom">
+                <div class="mi-stock-change"><span class="sc-before">{{ m.stockBefore }}</span><i class="fas fa-arrow-right sc-arrow"></i><span class="sc-after" [class.sc-up]="m.stockAfter > m.stockBefore" [class.sc-down]="m.stockAfter < m.stockBefore">{{ m.stockAfter }}</span><span class="sc-label">units</span></div>
+                <span class="mi-rx" *ngIf="m.prescriptionId"><i class="fas fa-file-prescription"></i> Rx #{{ m.prescriptionId | slice:0:8 }}...</span>
+                <span class="mi-by"><i class="fas fa-user"></i> {{ m.performedBy }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vue principale stock -->
+    <div *ngIf="!historyMed">
+      <div class="stock-filters">
+        <div class="sf-search"><i class="fas fa-search"></i><input id="stock-search" name="stockSearch" type="text" [(ngModel)]="stockSearch" placeholder="Search medication..." /></div>
+        <div class="sf-chips">
+          <button class="chip" [class.chip--active]="stockFilter === ''" (click)="stockFilter = ''">Tous</button>
+          <button class="chip chip--ok" [class.chip--active]="stockFilter === 'ok'" (click)="stockFilter = stockFilter === 'ok' ? '' : 'ok'"><i class="fas fa-check-circle"></i> En stock</button>
+          <button class="chip chip--warn" [class.chip--active]="stockFilter === 'low'" (click)="stockFilter = stockFilter === 'low' ? '' : 'low'"><i class="fas fa-exclamation-triangle"></i> Faible</button>
+          <button class="chip chip--danger" [class.chip--active]="stockFilter === 'out'" (click)="stockFilter = stockFilter === 'out' ? '' : 'out'"><i class="fas fa-times-circle"></i> Rupture</button>
+        </div>
+        <button class="btn btn-labeled primary btn-add-stock" (click)="openStockCreate()">
+          <i class="fas fa-plus"></i> Ajouter un médicament
+        </button>
+      </div>
+
+      <!-- ════════ Stock Overview ════════ -->
+      <div class="card table-card">
+        <div class="card-title">
+          <i class="fas fa-boxes"></i> Stock Overview
+          <span class="count-badge">{{ filteredStockMeds.length }} / {{ medications.length }}</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Médicament</th><th>Dosage</th><th>Voie</th>
+                <th>Niveau</th><th>Quantité</th><th>Statut</th><th>Expiration</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let med of filteredStockMeds; trackBy: trackById"
+                  [class.row--out]="stockLevel(med.quantity) === 'out'"
+                  [class.row--low]="stockLevel(med.quantity) === 'low'">
+                <td>
+                  <div class="med-cell">
+                    <div class="med-cell__icon" [class.med-cell__icon--kidney]="isKidneyMed(med.medicationName)"><i class="fas fa-capsules"></i></div>
+                    <div>
+                      <span>{{ med.medicationName }}</span>
+                      <span class="kidney-tag" *ngIf="isKidneyMed(med.medicationName)"><i class="fas fa-star"></i> Kidney</span>
+                    </div>
+                  </div>
+                </td>
+                <td>{{ med.dosage || '—' }}</td>
+                <td>{{ med.route || '—' }}</td>
+                <td>
+                  <div class="stock-bar-wrap">
+                    <div class="stock-bar">
+                      <div class="stock-bar-fill"
+                           [style.width.%]="stockBarWidth(med.quantity)"
+                           [class.fill-ok]="stockLevel(med.quantity) === 'ok'"
+                           [class.fill-low]="stockLevel(med.quantity) === 'low'"
+                           [class.fill-out]="stockLevel(med.quantity) === 'out'">
+                      </div>
+                    </div>
+                    <span class="bar-pct">{{ stockBarWidth(med.quantity) }}%</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="stock-badge"
+                        [class.ok]="stockLevel(med.quantity) === 'ok'"
+                        [class.low]="stockLevel(med.quantity) === 'low'"
+                        [class.out]="stockLevel(med.quantity) === 'out'">
+                    {{ med.quantity }} unités
+                  </span>
+                </td>
+                <td>
+                  <span class="stock-status-badge"
+                        [class.ssb--ok]="stockLevel(med.quantity) === 'ok'"
+                        [class.ssb--low]="stockLevel(med.quantity) === 'low'"
+                        [class.ssb--out]="stockLevel(med.quantity) === 'out'">
+                    <i class="fas"
+                       [class.fa-check-circle]="stockLevel(med.quantity) === 'ok'"
+                       [class.fa-exclamation-triangle]="stockLevel(med.quantity) === 'low'"
+                       [class.fa-times-circle]="stockLevel(med.quantity) === 'out'">
+                    </i>
+                    {{ stockLevel(med.quantity) === 'ok' ? 'En stock' :
+                       stockLevel(med.quantity) === 'low' ? 'Stock faible' : 'Rupture' }}
+                  </span>
+                </td>
+                <td [class.text-danger]="isExpired(med.endDate)">
+                  {{ med.endDate | date:'mediumDate' }}<span *ngIf="isExpired(med.endDate)"> ⚠️</span>
+                </td>
+                <td class="actions">
+                  <!-- ✅ Boutons avec icône + label -->
+                  <button class="btn btn-labeled stock-adjust" (click)="openAdjustModal(med)">
+                    <i class="fas fa-sliders-h"></i> Ajuster
+                  </button>
+                  <button class="btn btn-labeled view" (click)="openMedHistory(med)">
+                    <i class="fas fa-history"></i> Historique
+                  </button>
+                  <button class="btn btn-labeled edit" (click)="openStockEdit(med)">
+                    <i class="fas fa-pen"></i> Modifier
+                  </button>
+                  <button class="btn btn-labeled delete" (click)="deleteStockMed(med)">
+                    <i class="fas fa-trash-alt"></i> Supprimer
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="filteredStockMeds.length === 0">
+                <td colspan="8" class="empty-row"><i class="fas fa-search"></i><p>No medications match your search.</p></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Derniers mouvements -->
+      <div class="card table-card">
+        <div class="card-title"><i class="fas fa-history"></i> Recent Stock Movements<span class="count-badge">Last {{ movements.slice(0,20).length }}</span></div>
+        <div class="movement-timeline">
+          <div class="mt-empty" *ngIf="movements.length === 0"><i class="fas fa-inbox"></i><p>No movements yet.</p></div>
+          <div class="movement-item" *ngFor="let m of movements.slice(0, 20)"
+               [class.movement-item--in]="m.type === 'IN'" [class.movement-item--out]="m.type === 'OUT'">
+            <div class="mi-indicator"><div class="mi-dot" [class.mi-dot--in]="m.type === 'IN'" [class.mi-dot--out]="m.type === 'OUT'"><i class="fas" [class.fa-arrow-down]="m.type === 'IN'" [class.fa-arrow-up]="m.type === 'OUT'"></i></div><div class="mi-line"></div></div>
+            <div class="mi-content">
+              <div class="mi-top">
+                <div class="mi-left"><span class="mi-med-name">{{ m.medicationName }}</span><span class="mi-reason"><i class="fas" [ngClass]="'fas ' + reasonIcon(m.reason)"></i> {{ reasonLabel(m.reason) }}</span></div>
+                <div class="mi-right"><span class="mi-qty" [class.mi-qty--in]="m.type === 'IN'" [class.mi-qty--out]="m.type === 'OUT'">{{ m.type === 'IN' ? '+' : '-' }}{{ m.quantity }}</span><span class="mi-date">{{ m.createdAt | date:'short' }}</span></div>
+              </div>
+              <div class="mi-bottom">
+                <div class="mi-stock-change"><span class="sc-before">{{ m.stockBefore }}</span><i class="fas fa-arrow-right sc-arrow"></i><span class="sc-after" [class.sc-up]="m.stockAfter > m.stockBefore" [class.sc-down]="m.stockAfter < m.stockBefore">{{ m.stockAfter }}</span><span class="sc-label">units</span></div>
+                <span class="mi-rx" *ngIf="m.prescriptionId"><i class="fas fa-file-prescription"></i> Rx #{{ m.prescriptionId | slice:0:8 }}...</span>
+                <span class="mi-by"><i class="fas fa-user"></i> {{ m.performedBy }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- MODAL: DETAIL PRESCRIPTION                  -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="modal-overlay" *ngIf="viewingPrescription" (click)="closeView()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-file-prescription"></i> Prescription Detail</h3>
+        <button class="modal-close" (click)="closeView()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-grid">
+          <div class="detail-item"><label>Patient</label><span>{{ getUserName(viewingPrescription.userId ?? '') }}</span></div>
+          <div class="detail-item"><label>Prescribed By</label><span>{{ viewingPrescription.prescribedBy || '—' }}</span></div>
+          <div class="detail-item"><label>Date</label><span>{{ viewingPrescription.prescriptionDate | date:'mediumDate' }}</span></div>
+          <div class="detail-item">
+            <label>Valid Until</label>
+            <span [class.text-danger]="isExpired(viewingPrescription.validUntil)">
+              {{ viewingPrescription.validUntil | date:'mediumDate' }}
+              <span *ngIf="isExpired(viewingPrescription.validUntil)"> ⚠️ Expired</span>
+            </span>
+          </div>
+          <div class="detail-item"><label>Status</label><span class="status-badge" [ngClass]="statusClass(viewingPrescription.status)">{{ viewingPrescription.status }}</span></div>
+          <div class="detail-item"><label>Consultation ID</label><span>{{ viewingPrescription.consultationId || '—' }}</span></div>
+          <div class="detail-item full" *ngIf="viewingPrescription.instructions"><label>Instructions</label><span>{{ viewingPrescription.instructions }}</span></div>
+        </div>
+        <div class="modal-section-label"><i class="fas fa-pills"></i> Medications</div>
+        <div class="med-list" *ngIf="viewingPrescription.medications?.length; else noMeds">
+          <div class="med-item" *ngFor="let m of viewingPrescription.medications">
+            <div class="med-item__name"><i class="fas fa-capsules"></i> {{ m.medicationName }}</div>
+            <div class="med-item__details">
+              <span *ngIf="m.dosage"><i class="fas fa-flask"></i> {{ m.dosage }}</span>
+              <span *ngIf="m.route"><i class="fas fa-route"></i> {{ m.route }}</span>
+              <span *ngIf="m.frequency"><i class="fas fa-redo"></i> {{ m.frequency }}×/day</span>
+              <span *ngIf="m.duration"><i class="fas fa-clock"></i> {{ m.duration }} days</span>
+              <span><i class="fas fa-boxes"></i> Qty: {{ m.quantity }}</span>
+            </div>
+          </div>
+        </div>
+        <ng-template #noMeds><p class="no-meds-text">No medications attached.</p></ng-template>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- MODAL: CRUD MEDICATION (Stock Tab)          -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="modal-overlay" *ngIf="showStockMedModal" (click)="showStockMedModal = false">
+    <div class="modal-box stock-med-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-{{ editingStockMedId ? 'pen' : 'plus-circle' }}"></i>{{ editingStockMedId ? 'Modifier le médicament' : 'Ajouter un médicament' }}</h3>
+        <button class="modal-close" (click)="showStockMedModal = false"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="adj-error" *ngIf="stockMedError"><i class="fas fa-exclamation-circle"></i> {{ stockMedError }}</div>
+        <form [formGroup]="stockMedForm">
+          <div class="form-grid">
+            <div class="form-group"><label for="stock-med-name"><i class="fas fa-pills"></i> Nom</label><select id="stock-med-name" name="stockMedicationName" formControlName="medicationName" (change)="onStockMedNameChange()"><option value="" disabled>Sélectionner...</option><option *ngFor="let m of KIDNEY_MEDS" [value]="m">{{ m }}</option></select></div>
+            <div class="form-group"><label for="stock-med-dosage"><i class="fas fa-flask"></i> Dosage</label><select id="stock-med-dosage" name="stockDosage" formControlName="dosage" *ngIf="getStockFormDosages().length > 0; else freeDosageStock"><option value="" disabled>Sélectionner...</option><option *ngFor="let d of getStockFormDosages()" [value]="d">{{ d }}</option></select><ng-template #freeDosageStock><input id="stock-med-dosage" name="stockDosage" type="text" formControlName="dosage" placeholder="ex: 500mg" /></ng-template></div>
+            <div class="form-group"><label for="stock-med-frequency"><i class="fas fa-redo"></i> Fréquence (×/j)</label><input id="stock-med-frequency" name="stockFrequency" type="number" formControlName="frequency" min="1" (input)="enforceMin($event, 1)" placeholder="Min 1" /></div>
+            <div class="form-group"><label for="stock-med-route"><i class="fas fa-route"></i> Voie</label><select id="stock-med-route" name="stockRoute" formControlName="route"><option [ngValue]="null" disabled>Sélectionner...</option><option *ngFor="let r of routes" [value]="r">{{ r }}</option></select></div>
+            <div class="form-group"><label for="stock-med-duration"><i class="fas fa-clock"></i> Durée (jours)</label><input id="stock-med-duration" name="stockDuration" type="number" formControlName="duration" min="1" (input)="enforceMin($event, 1)" placeholder="Min 1" /></div>
+            <div class="form-group"><label for="stock-med-quantity"><i class="fas fa-boxes"></i> Quantité initiale</label><input id="stock-med-quantity" name="stockQuantity" type="number" formControlName="quantity" min="1" (input)="enforceMin($event, 1)" placeholder="Min 1" /></div>
+            <div class="form-group">
+              <label for="stock-med-start-date"><i class="fas fa-calendar-plus"></i> Date de début</label>
+              <input id="stock-med-start-date" name="stockStartDate" type="date" formControlName="startDate" [min]="today()" (change)="onStockStartDateChange()" />
+              <small class="field-error" *ngIf="stockMedForm.get('startDate')?.errors?.['pastDate'] && stockMedForm.get('startDate')?.touched">⚠️ Date dans le passé</small>
+            </div>
+            <div class="form-group">
+              <label for="stock-med-end-date"><i class="fas fa-calendar-alt"></i> Date de fin</label>
+              <input id="stock-med-end-date" name="stockEndDate" type="date" formControlName="endDate" [min]="getStockMinEndDate()" />
+              <small class="field-error" *ngIf="stockMedForm.errors?.['endBeforeStart'] && stockMedForm.get('endDate')?.touched">⚠️ Date de fin avant date de début</small>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-labeled cancel" (click)="showStockMedModal = false">
+          <i class="fas fa-times"></i> Annuler
+        </button>
+        <button class="btn btn-labeled primary" (click)="submitStockMed()" [disabled]="stockMedForm.invalid || stockMedLoading">
+          <i class="fas fa-spinner fa-spin" *ngIf="stockMedLoading"></i>
+          <i class="fas fa-{{ editingStockMedId ? 'save' : 'plus' }}" *ngIf="!stockMedLoading"></i>
+          {{ stockMedLoading ? 'Enregistrement...' : editingStockMedId ? 'Mettre à jour' : 'Ajouter au stock' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- MODAL: AJUSTEMENT STOCK                     -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="modal-overlay" *ngIf="showAdjustModal" (click)="showAdjustModal = false">
+    <div class="adjust-modal" (click)="$event.stopPropagation()">
+      <div class="adjust-header">
+        <div class="adjust-header-icon"><i class="fas fa-sliders-h"></i></div>
+        <div><h3>Ajuster le Stock</h3><p>{{ adjustTargetMed?.medicationName }}</p></div>
+        <button class="modal-close white-close" (click)="showAdjustModal = false"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="adjust-body">
+        <div class="adj-error" *ngIf="adjustError"><i class="fas fa-exclamation-circle"></i> {{ adjustError }}</div>
+        <div class="adj-type-selector">
+          <button class="adj-type-btn adj-type-btn--in" [class.selected]="adjustForm.isAddition"
+                  (click)="adjustForm.isAddition = true; adjustForm.reason = 'MANUAL_RESTOCK'">
+            <i class="fas fa-plus-circle"></i><span>Ajouter</span><small>Réapprovisionnement</small>
+          </button>
+          <button class="adj-type-btn adj-type-btn--out" [class.selected]="!adjustForm.isAddition"
+                  (click)="adjustForm.isAddition = false; adjustForm.reason = 'ADJUSTMENT'">
+            <i class="fas fa-minus-circle"></i><span>Retirer</span><small>Expiré / Perte</small>
+          </button>
+        </div>
+        <div class="adj-current-stock">
+          <i class="fas fa-boxes"></i> Stock actuel :
+          <strong [class.text-danger]="stockLevel(adjustTargetMed?.quantity) === 'out'" [class.text-warning]="stockLevel(adjustTargetMed?.quantity) === 'low'">{{ adjustTargetMed?.quantity }} unités</strong>
+          → <strong [class.text-success]="adjustForm.isAddition" [class.text-danger]="!adjustForm.isAddition">{{ adjustForm.isAddition ? (adjustTargetMed?.quantity || 0) + adjustForm.quantityChange : (adjustTargetMed?.quantity || 0) - adjustForm.quantityChange }} unités</strong>
+        </div>
+        <div class="adj-field">
+          <label class="adj-label"><i class="fas fa-boxes"></i> Quantité</label>
+          <div class="adj-stepper">
+            <button class="stepper-btn" (click)="adjustForm.quantityChange = adjustForm.quantityChange > 1 ? adjustForm.quantityChange - 1 : 1"><i class="fas fa-minus"></i></button>
+            <span class="stepper-val" [class.sv--add]="adjustForm.isAddition" [class.sv--remove]="!adjustForm.isAddition">{{ adjustForm.isAddition ? '+' : '-' }}{{ adjustForm.quantityChange }}</span>
+            <button class="stepper-btn" (click)="adjustForm.quantityChange = adjustForm.quantityChange + 1"><i class="fas fa-plus"></i></button>
+          </div>
+        </div>
+        <div class="adj-field"><label class="adj-label" for="adjust-reason"><i class="fas fa-tag"></i> Raison</label><select id="adjust-reason" name="adjustReason" class="adj-select" [(ngModel)]="adjustForm.reason"><option *ngFor="let r of REASONS" [value]="r.value">{{ r.label }}</option></select></div>
+        <div class="adj-field"><label class="adj-label" for="adjust-notes"><i class="fas fa-comment"></i> Notes (optionnel)</label><textarea id="adjust-notes" name="adjustNotes" class="adj-textarea" [(ngModel)]="adjustForm.notes" placeholder="Remarques..." rows="2"></textarea></div>
+        <button class="adj-submit"
+                [class.adj-submit--add]="adjustForm.isAddition"
+                [class.adj-submit--remove]="!adjustForm.isAddition"
+                (click)="submitAdjust()" [disabled]="adjustLoading">
+          <i class="fas fa-spinner fa-spin" *ngIf="adjustLoading"></i>
+          <i class="fas fa-check" *ngIf="!adjustLoading"></i>
+          {{ adjustLoading ? 'Mise à jour...' : adjustForm.isAddition ? 'Ajouter ' + adjustForm.quantityChange + ' unités' : 'Retirer ' + adjustForm.quantityChange + ' unités' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

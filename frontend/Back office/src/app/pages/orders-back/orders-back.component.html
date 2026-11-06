@@ -1,0 +1,735 @@
+<div class="orders-page">
+
+  <!-- ── HEADER ── -->
+  <div class="page-header">
+    <div class="page-header__icon"><i class="fas fa-boxes"></i></div>
+    <div>
+      <p class="page-header__sub">Back Office / Admin</p>
+      <h2 class="page-header__title">Orders & Deliveries</h2>
+    </div>
+
+    <!-- ✅ Widget taux de change : affiche 1 EUR = X TND -->
+    <div class="exchange-widget">
+      <i class="fas fa-coins"></i>
+      <span *ngIf="!eurLoading">
+        1 EUR = <strong>{{ eurRate | number:'1.4-4' }} TND</strong>
+      </span>
+      <span *ngIf="eurLoading">
+        <i class="fas fa-spinner fa-spin"></i> Chargement...
+      </span>
+      <button class="btn-refresh-rate" (click)="loadExchangeRate()" title="Actualiser le taux">
+        <i class="fas fa-sync-alt"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── STATS ── -->
+  <div class="order-stats" *ngIf="orderStats">
+    <div class="os-item os-pending">
+      <div class="os-icon"><i class="fas fa-clock"></i></div>
+      <div class="os-body">
+        <span class="os-value">{{ orderStats.pending }}</span>
+        <span class="os-label">Pending</span>
+      </div>
+    </div>
+    <div class="os-item os-confirmed">
+      <div class="os-icon"><i class="fas fa-check"></i></div>
+      <div class="os-body">
+        <span class="os-value">{{ orderStats.confirmed }}</span>
+        <span class="os-label">Confirmed</span>
+      </div>
+    </div>
+    <div class="os-item os-processing">
+      <div class="os-icon"><i class="fas fa-cog"></i></div>
+      <div class="os-body">
+        <span class="os-value">{{ orderStats.processing }}</span>
+        <span class="os-label">Processing</span>
+      </div>
+    </div>
+    <div class="os-item os-shipped">
+      <div class="os-icon"><i class="fas fa-truck"></i></div>
+      <div class="os-body">
+        <span class="os-value">{{ orderStats.shipped }}</span>
+        <span class="os-label">Shipped</span>
+      </div>
+    </div>
+    <div class="os-item os-delivered">
+      <div class="os-icon"><i class="fas fa-check-double"></i></div>
+      <div class="os-body">
+        <span class="os-value">{{ orderStats.delivered }}</span>
+        <span class="os-label">Delivered</span>
+      </div>
+    </div>
+    <div class="os-item os-cancelled">
+      <div class="os-icon"><i class="fas fa-ban"></i></div>
+      <div class="os-body">
+        <span class="os-value">{{ orderStats.cancelled }}</span>
+        <span class="os-label">Cancelled</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TABS ── -->
+  <div class="tabs">
+    <button class="tab-btn" [class.active]="activeTab === 'orders'" (click)="activeTab = 'orders'">
+      <i class="fas fa-shopping-cart"></i> Orders
+      <span class="tab-count">{{ orders.length }}</span>
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'deliveries'" (click)="activeTab = 'deliveries'">
+      <i class="fas fa-truck"></i> Deliveries
+      <span class="tab-count">{{ deliveries.length }}</span>
+    </button>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- TAB: COMMANDES                                          -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div *ngIf="activeTab === 'orders'">
+
+    <div class="toolbar">
+      <div class="toolbar-search">
+        <i class="fas fa-search"></i>
+        <input type="text" [(ngModel)]="searchOrder"
+               placeholder="Rechercher patient, ID, tracking..." />
+        <button *ngIf="searchOrder" (click)="searchOrder = ''">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="toolbar-filters">
+        <select [(ngModel)]="filterStatus" class="filter-sel">
+          <option value="">All statuses</option>
+          <option *ngFor="let s of ORDER_STATUSES" [value]="s">{{ s }}</option>
+        </select>
+        <select [(ngModel)]="sortOrder" class="filter-sel">
+          <option value="date-desc">More recent</option>
+          <option value="date-asc">Older</option>
+          <option value="amount">Amount ↓</option>
+        </select>
+        <button class="btn-reset" *ngIf="hasOrderFilters" (click)="resetOrderFilters()">
+          <i class="fas fa-xmark"></i> Reset
+        </button>
+      </div>
+    </div>
+
+    <div class="state-empty" *ngIf="loadingOrders">
+      <i class="fas fa-spinner fa-spin"></i><p>Chargement...</p>
+    </div>
+
+    <div class="card table-card" *ngIf="!loadingOrders">
+      <div class="card-title">
+        <i class="fas fa-table"></i> Order list
+        <span class="count-badge">{{ filteredOrders.length }} / {{ orders.length }}</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Patient</th>
+              <th>Articles</th>
+              <th>Total</th>
+              <th>Tracking</th>
+              <th>Statut</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let o of filteredOrders; trackBy: trackById">
+
+              <td>
+                <div class="patient-cell">
+                  <div class="patient-avatar">
+                    {{ (o.patientName[0] || '?').toUpperCase() }}
+                  </div>
+                  <div>
+                    <span class="patient-name">{{ o.patientName }}</span>
+                    <span class="patient-phone">{{ o.phoneNumber }}</span>
+                  </div>
+                </div>
+              </td>
+
+              <td>
+                <span class="count-pill">{{ o.items?.length || 0 }} méd.</span>
+              </td>
+
+              <!-- ✅ Montant principal en EUR, conversion en TND -->
+              <td>
+                <div class="amount-cell">
+                  <strong>{{ o.totalAmount | number:'1.2-2' }} EUR</strong>
+                  <span class="eur-conv">
+                    <i class="fas fa-equals"></i>
+                    {{ toTND(o.totalAmount) | number:'1.2-2' }} TND
+                  </span>
+                </div>
+              </td>
+
+              <td>
+                <span class="tracking-badge" *ngIf="o.trackingNumber">
+                  <i class="fas fa-barcode"></i> {{ o.trackingNumber }}
+                </span>
+                <span class="no-tracking" *ngIf="!o.trackingNumber">—</span>
+              </td>
+
+              <td>
+                <span class="status-badge" [ngClass]="orderStatusClass(o.status)">
+                  <i class="fas" [ngClass]="'fa-' + orderStatusIcon(o.status)"></i>
+                  {{ o.status }}
+                </span>
+              </td>
+
+              <td>{{ o.createdAt | date:'dd/MM/yy HH:mm' }}</td>
+
+              <td class="actions">
+                <button class="btn btn-labeled view" (click)="viewOrder(o)">
+                  <i class="fas fa-eye"></i> See
+                </button>
+                <button class="btn btn-labeled primary"
+                        (click)="openDeliveryModal(o.id)"
+                        *ngIf="o.status === 'CONFIRMED' || o.status === 'PROCESSING'"
+                        [disabled]="!!deliveryForOrder(o.id)">
+                  <i class="fas fa-truck"></i> Deliver
+                </button>
+                <select class="status-select"
+                        [value]="o.status"
+                        (change)="updateOrderStatus(o.id, $any($event.target).value)">
+                  <option *ngFor="let s of ORDER_STATUSES" [value]="s">{{ s }}</option>
+                </select>
+                <button class="btn btn-labeled delete" (click)="deleteOrder(o.id)">
+                  <i class="fas fa-trash-alt"></i> DELETE
+                </button>
+              </td>
+
+            </tr>
+            <tr *ngIf="filteredOrders.length === 0">
+              <td colspan="7" class="empty-row">
+                <i class="fas fa-shopping-cart"></i>
+                <p>No orders found.</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- TAB: LIVRAISONS                                         -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div *ngIf="activeTab === 'deliveries'">
+
+    <div class="state-empty" *ngIf="loadingDeliveries">
+      <i class="fas fa-spinner fa-spin"></i><p>Chargement...</p>
+    </div>
+
+    <div class="card table-card" *ngIf="!loadingDeliveries">
+      <div class="card-title">
+        <i class="fas fa-truck"></i> Delivery list
+        <span class="count-badge">{{ deliveries.length }} total</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tracking</th>
+              <th>Patient</th>
+              <th>Delivery person</th>
+              <th>Address</th>
+              <th>Planifiée le</th>
+              <th>Attempts</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let d of deliveries; trackBy: trackById">
+              <td>
+                <span class="tracking-badge">
+                  <i class="fas fa-barcode"></i> {{ d.trackingNumber }}
+                </span>
+              </td>
+              <td>{{ d.patientName }}</td>
+              <td>
+                <div class="driver-cell">
+                  <i class="fas fa-id-badge"></i> {{ d.driverName }}
+                </div>
+              </td>
+              <td class="address-cell">{{ d.deliveryAddress }}</td>
+              <td>{{ d.scheduledAt | date:'dd/MM/yy HH:mm' }}</td>
+              <td>
+                <span class="attempts-badge"
+                      [class.attempts-warn]="d.attempts >= 2"
+                      [class.attempts-danger]="d.attempts >= 3">
+                  {{ d.attempts }}×
+                </span>
+              </td>
+              <td>
+                <span class="status-badge" [ngClass]="deliveryStatusClass(d.status)">
+                  <i class="fas" [ngClass]="'fa-' + deliveryStatusIcon(d.status)"></i>
+                  {{ d.status }}
+                </span>
+              </td>
+              <td class="actions">
+                <button class="btn btn-labeled view" (click)="viewDelivery(d)">
+                  <i class="fas fa-eye"></i> Voir
+                </button>
+                <select class="status-select"
+                        [value]="d.status"
+                        (change)="updateDeliveryStatus(d.id, $any($event.target).value)">
+                  <option *ngFor="let s of DELIVERY_STATUSES" [value]="s">{{ s }}</option>
+                </select>
+              </td>
+            </tr>
+            <tr *ngIf="deliveries.length === 0">
+              <td colspan="8" class="empty-row">
+                <i class="fas fa-truck"></i>
+                <p>Aucune livraison enregistrée.</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- MODAL: NOUVELLE COMMANDE                                -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" *ngIf="showOrderForm" (click)="closeOrderForm()">
+    <div class="modal-box modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-shopping-cart"></i> Nouvelle commande</h3>
+        <button class="modal-close" (click)="closeOrderForm()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+
+        <div class="adj-error" *ngIf="orderError">
+          <i class="fas fa-exclamation-circle"></i> {{ orderError }}
+        </div>
+
+        <form [formGroup]="orderForm">
+          <div class="section-label"><i class="fas fa-user"></i> Patient</div>
+          <div class="form-grid">
+
+            <div class="form-group user-select-group">
+              <label>Patient <span class="req">*</span></label>
+              <div class="user-search-wrap">
+                <i class="fas fa-search user-search-icon"></i>
+                <input type="text" class="user-search-input"
+                       [(ngModel)]="patientSearch"
+                       [ngModelOptions]="{standalone:true}"
+                       (input)="onPatientSearch()"
+                       (focus)="showPatientDrop=true; filteredPatients=keycloakUsers"
+                       (blur)="closePatientDrop()"
+                       placeholder="Rechercher un patient..."
+                       autocomplete="off" />
+                <button type="button" class="user-clear-btn" *ngIf="patientSearch"
+                        (mousedown)="patientSearch=''; orderForm.get('patientId')?.setValue('')">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+              <div class="user-dropdown" *ngIf="showPatientDrop">
+                <div class="user-option"
+                     *ngFor="let u of filteredPatients.slice(0,6)"
+                     (mousedown)="selectPatient(u)">
+                  <div class="uo-avatar">
+                    {{ (u.firstName?.[0] || u.username[0] || '?').toUpperCase() }}
+                  </div>
+                  <div class="uo-info">
+                    <span class="uo-name">{{ u.firstName }} {{ u.lastName }}</span>
+                    <span class="uo-email">{{ u.email }}</span>
+                  </div>
+                  <span class="uo-tag">@{{ u.username }}</span>
+                </div>
+              </div>
+              <input type="hidden" formControlName="patientId" />
+              <input type="hidden" formControlName="patientName" />
+              <small class="user-id-confirm" *ngIf="orderForm.get('patientId')?.value">
+                <i class="fas fa-check-circle"></i>
+                {{ orderForm.get('patientName')?.value }}
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label>Adresse de livraison <span class="req">*</span></label>
+              <input type="text" formControlName="deliveryAddress"
+                     placeholder="12 rue de la Santé, Paris" />
+            </div>
+            <div class="form-group">
+              <label>Téléphone <span class="req">*</span></label>
+              <input type="tel" formControlName="phoneNumber"
+                     placeholder="06 00 00 00 00" />
+            </div>
+            <div class="form-group">
+              <label>ID Prescription (optionnel)</label>
+              <input type="text" formControlName="prescriptionId"
+                     placeholder="UUID prescription" />
+            </div>
+            <div class="form-group full">
+              <label>Notes</label>
+              <textarea formControlName="notes"
+                        placeholder="Instructions spéciales..."></textarea>
+            </div>
+          </div>
+
+          <div class="section-label">
+            <i class="fas fa-pills"></i> Médicaments commandés
+            <button type="button" class="btn-add-med" (click)="addItem()">
+              <i class="fas fa-plus"></i> Ajouter
+            </button>
+          </div>
+
+          <div class="order-items">
+            <div class="order-item-row"
+                 *ngFor="let item of orderItems; let i=index; trackBy: trackByIndex">
+              <div class="item-num">{{ i + 1 }}</div>
+              <div class="item-fields">
+                <select class="item-select" (change)="onMedSelect(i, $event)">
+                  <option value="" disabled [selected]="!item.medicationId">
+                    Sélectionner un médicament
+                  </option>
+                  <option *ngFor="let m of medications" [value]="m.id">
+                    {{ m.medicationName }} — {{ m.dosage }} (stock: {{ m.quantity }})
+                  </option>
+                </select>
+                <div class="item-qty-wrap">
+                  <label>Qté</label>
+                  <input type="number"
+                         [(ngModel)]="item.quantity"
+                         [ngModelOptions]="{standalone:true}"
+                         min="1" class="item-qty" />
+                </div>
+                <span class="item-dosage" *ngIf="item.dosage">{{ item.dosage }}</span>
+              </div>
+              <button type="button" class="btn btn-labeled delete"
+                      (click)="removeItem(i)"
+                      *ngIf="orderItems.length > 1">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-labeled cancel" (click)="closeOrderForm()">
+          <i class="fas fa-times"></i> Annuler
+        </button>
+        <button class="btn btn-labeled primary"
+                (click)="submitOrder()"
+                [disabled]="orderLoading">
+          <i class="fas fa-spinner fa-spin" *ngIf="orderLoading"></i>
+          <i class="fas fa-check" *ngIf="!orderLoading"></i>
+          {{ orderLoading ? 'Enregistrement...' : 'Créer la commande' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- MODAL: DÉTAIL COMMANDE                                  -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" *ngIf="viewingOrder" (click)="closeOrderView()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-shopping-cart"></i> Détail commande</h3>
+        <button class="modal-close" (click)="closeOrderView()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>ID</label>
+            <span class="mono">{{ viewingOrder.id }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Patient</label>
+            <span>{{ viewingOrder.patientName }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Téléphone</label>
+            <span>{{ viewingOrder.phoneNumber }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Adresse</label>
+            <span>{{ viewingOrder.deliveryAddress }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Statut</label>
+            <span class="status-badge" [ngClass]="orderStatusClass(viewingOrder.status)">
+              {{ viewingOrder.status }}
+            </span>
+          </div>
+
+          <!-- ✅ Total principal en EUR, converti en TND -->
+          <div class="detail-item">
+            <label>Total</label>
+            <div class="amount-cell">
+              <strong>{{ viewingOrder.totalAmount | number:'1.2-2' }} EUR</strong>
+              <span class="eur-conv">
+                <i class="fas fa-equals"></i>
+                {{ toTND(viewingOrder.totalAmount) | number:'1.2-2' }} TND
+              </span>
+            </div>
+          </div>
+
+          <div class="detail-item" *ngIf="viewingOrder.trackingNumber">
+            <label>Tracking</label>
+            <span class="tracking-badge">
+              <i class="fas fa-barcode"></i> {{ viewingOrder.trackingNumber }}
+            </span>
+          </div>
+          <div class="detail-item" *ngIf="viewingOrder.prescriptionId">
+            <label>Prescription</label>
+            <span class="mono">{{ viewingOrder.prescriptionId }}</span>
+          </div>
+          <div class="detail-item full" *ngIf="viewingOrder.notes">
+            <label>Notes</label>
+            <span>{{ viewingOrder.notes }}</span>
+          </div>
+        </div>
+
+        <div class="modal-section-label">
+          <i class="fas fa-pills"></i> Médicaments commandés
+        </div>
+        <div class="med-list">
+          <div class="med-item" *ngFor="let item of viewingOrder.items">
+            <div class="med-item__name">
+              <i class="fas fa-capsules"></i> {{ item.medicationName }}
+            </div>
+            <div class="med-item__details">
+              <span *ngIf="item.dosage">
+                <i class="fas fa-flask"></i> {{ item.dosage }}
+              </span>
+              <span *ngIf="item.route">
+                <i class="fas fa-route"></i> {{ item.route }}
+              </span>
+              <span><i class="fas fa-boxes"></i> Qté : {{ item.quantity }}</span>
+              <!-- ✅ Sous-total en EUR, converti en TND -->
+              <span>
+                <i class="fas fa-coins"></i>
+                {{ item.subtotal | number:'1.2-2' }} EUR
+                <em style="opacity:.6; font-size:.72rem">
+                  ≈ {{ toTND(item.subtotal) | number:'1.2-2' }} TND
+                </em>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <ng-container *ngIf="deliveryForOrder(viewingOrder.id) as del">
+          <div class="modal-section-label">
+            <i class="fas fa-truck"></i> Livraison
+          </div>
+          <div class="delivery-summary">
+            <span><i class="fas fa-barcode"></i> {{ del.trackingNumber }}</span>
+            <span><i class="fas fa-id-badge"></i> {{ del.driverName }}</span>
+            <span class="status-badge" [ngClass]="deliveryStatusClass(del.status)">
+              {{ del.status }}
+            </span>
+            <span *ngIf="del.deliveredAt">
+              <i class="fas fa-check"></i>
+              Livré le {{ del.deliveredAt | date:'dd/MM/yy HH:mm' }}
+            </span>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- MODAL: CRÉER LIVRAISON                                  -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" *ngIf="showDeliveryModal" (click)="closeDeliveryModal()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-truck"></i> Planifier une livraison</h3>
+        <button class="modal-close" (click)="closeDeliveryModal()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="adj-error" *ngIf="deliveryError">
+          <i class="fas fa-exclamation-circle"></i> {{ deliveryError }}
+        </div>
+
+        <form [formGroup]="deliveryForm">
+          <div class="form-grid">
+
+            <div class="form-group full user-select-group">
+              <label>
+                <i class="fas fa-id-badge"></i>
+                Nom du livreur <span class="req">*</span>
+              </label>
+
+              <div class="user-search-wrap">
+                <i class="fas fa-search user-search-icon"></i>
+                <input
+                  type="text"
+                  class="user-search-input"
+                  [(ngModel)]="driverSearch"
+                  [ngModelOptions]="{ standalone: true }"
+                  (input)="onDriverSearch()"
+                  (focus)="showDriverDrop = true; filteredDrivers = keycloakDrivers"
+                  (click)="showDriverDrop = true; filteredDrivers = keycloakDrivers"
+                  (keyup)="showDriverDrop = true"
+                  placeholder="Cliquer pour voir les livreurs..."
+                  autocomplete="off" />
+                <button
+                  type="button"
+                  class="user-clear-btn"
+                  *ngIf="driverSearch"
+                  (mousedown)="clearDriver()">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+
+              <div class="user-dropdown"
+                   *ngIf="showDriverDrop"
+                   (mousedown)="$event.preventDefault()">
+
+                <ng-container *ngIf="keycloakDrivers.length > 0">
+                  <div class="user-option"
+                       *ngFor="let u of filteredDrivers.slice(0, 8)"
+                       (mousedown)="selectDriver(u)">
+                    <div class="uo-avatar">
+                      {{ (u.firstName?.[0] || u.username[0] || '?').toUpperCase() }}
+                    </div>
+                    <div class="uo-info">
+                      <span class="uo-name">{{ u.firstName }} {{ u.lastName }}</span>
+                      <span class="uo-email">{{ u.email }}</span>
+                    </div>
+                    <span class="uo-tag">
+                      <i class="fas fa-truck"></i> @{{ u.username }}
+                    </span>
+                  </div>
+                  <div class="user-no-result" *ngIf="filteredDrivers.length === 0">
+                    <i class="fas fa-search"></i>
+                    Aucun livreur trouvé pour "{{ driverSearch }}"
+                  </div>
+                </ng-container>
+
+                <ng-container *ngIf="keycloakDrivers.length === 0">
+                  <div class="user-no-result">
+                    <i class="fas fa-user-slash"></i>
+                    Aucun livreur disponible.
+                    <small>
+                      Créez des utilisateurs avec le rôle <code>livreur</code> dans Keycloak.
+                    </small>
+                  </div>
+                </ng-container>
+              </div>
+
+              <input type="hidden" formControlName="driverName" />
+
+              <small class="user-id-confirm"
+                     *ngIf="deliveryForm.get('driverName')?.value">
+                <i class="fas fa-check-circle"></i>
+                Livreur sélectionné : <strong>{{ driverSearch }}</strong>
+                <span style="opacity:.6"> (@{{ deliveryForm.get('driverName')?.value }})</span>
+              </small>
+            </div>
+
+            <div class="form-group full">
+              <label>
+                <i class="fas fa-calendar-alt"></i>
+                Date de livraison prévue <span class="req">*</span>
+              </label>
+              <input type="datetime-local"
+                     formControlName="scheduledAt"
+                     [min]="today()" />
+            </div>
+
+            <div class="form-group full">
+              <label><i class="fas fa-comment"></i> Notes</label>
+              <textarea formControlName="notes"
+                        placeholder="Instructions pour le livreur..."></textarea>
+            </div>
+
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-labeled cancel" (click)="closeDeliveryModal()">
+          <i class="fas fa-times"></i> Annuler
+        </button>
+        <button class="btn btn-labeled primary"
+                (click)="submitDelivery()"
+                [disabled]="deliveryForm.invalid || deliveryLoading">
+          <i class="fas fa-spinner fa-spin" *ngIf="deliveryLoading"></i>
+          <i class="fas fa-truck" *ngIf="!deliveryLoading"></i>
+          {{ deliveryLoading ? 'Enregistrement...' : 'Planifier la livraison' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- MODAL: DÉTAIL LIVRAISON                                 -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" *ngIf="viewingDelivery" (click)="closeDeliveryView()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-truck"></i> Détail livraison</h3>
+        <button class="modal-close" (click)="closeDeliveryView()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>Tracking</label>
+            <span class="tracking-badge">
+              <i class="fas fa-barcode"></i> {{ viewingDelivery.trackingNumber }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <label>Patient</label>
+            <span>{{ viewingDelivery.patientName }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Livreur</label>
+            <span>{{ viewingDelivery.driverName }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Téléphone</label>
+            <span>{{ viewingDelivery.phoneNumber }}</span>
+          </div>
+          <div class="detail-item full">
+            <label>Adresse</label>
+            <span>{{ viewingDelivery.deliveryAddress }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Statut</label>
+            <span class="status-badge" [ngClass]="deliveryStatusClass(viewingDelivery.status)">
+              {{ viewingDelivery.status }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <label>Tentatives</label>
+            <span class="attempts-badge"
+                  [class.attempts-warn]="viewingDelivery.attempts >= 2">
+              {{ viewingDelivery.attempts }}×
+            </span>
+          </div>
+          <div class="detail-item">
+            <label>Planifiée le</label>
+            <span>{{ viewingDelivery.scheduledAt | date:'dd/MM/yy HH:mm' }}</span>
+          </div>
+          <div class="detail-item" *ngIf="viewingDelivery.deliveredAt">
+            <label>Livrée le</label>
+            <span>{{ viewingDelivery.deliveredAt | date:'dd/MM/yy HH:mm' }}</span>
+          </div>
+          <div class="detail-item full" *ngIf="viewingDelivery.notes">
+            <label>Notes</label>
+            <span>{{ viewingDelivery.notes }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

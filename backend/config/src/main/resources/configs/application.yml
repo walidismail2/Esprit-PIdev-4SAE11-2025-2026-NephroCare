@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────
+# Everything here is inherited by every service
+# ─────────────────────────────────────────────
+
+# Eureka — same for everyone
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://discovery-service:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
+# Common JPA settings
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,refresh

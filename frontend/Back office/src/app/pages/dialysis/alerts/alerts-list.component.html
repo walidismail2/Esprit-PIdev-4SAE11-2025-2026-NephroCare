@@ -1,0 +1,66 @@
+<div class="alerts-page">
+    <div class="alerts-header">
+        <div>
+            <h2>Dialysis Alerts</h2>
+            <p>Monitor and manage open clinical alerts.</p>
+        </div>
+
+        <button class="refresh-btn" (click)="loadAlerts()">Refresh</button>
+    </div>
+
+    <div class="filters">
+        <select [value]="selectedSeverity" (change)="onSeverityChange($any($event.target).value)">
+            <option value="ALL">All severities</option>
+            <option value="CRITICAL">Critical</option>
+            <option value="WARNING">Warning</option>
+            <option value="INFO">Info</option>
+        </select>
+
+        <select [value]="selectedCategory" (change)="onCategoryChange($any($event.target).value)">
+            <option value="ALL">All categories</option>
+            <option value="ADEQUACY">Adequacy</option>
+            <option value="HEMODYNAMIC">Hemodynamic</option>
+            <option value="WEIGHT">Weight</option>
+            <option value="COMPLICATION">Complication</option>
+            <option value="GLOBAL">Global</option>
+        </select>
+    </div>
+
+    <div *ngIf="loading" class="state-box">
+        Loading alerts...
+    </div>
+
+    <div *ngIf="error" class="state-box error-box">
+        {{ error }}
+    </div>
+
+    <div *ngIf="!loading && filteredAlerts.length === 0" class="state-box">
+        No open alerts found.
+    </div>
+
+    <div class="alerts-grid" *ngIf="filteredAlerts.length > 0">
+        <div class="alert-card" *ngFor="let alert of filteredAlerts">
+            <div class="alert-top">
+        <span class="severity-badge" [ngClass]="severityClass(alert.severity)">
+          {{ alert.severity }}
+        </span>
+                <span class="alert-date">{{ alert.createdAt | date:'short' }}</span>
+            </div>
+
+            <h3>{{ alert.title }}</h3>
+            <p class="alert-message">{{ alert.message }}</p>
+
+            <div class="alert-meta">
+                <div><strong>Category:</strong> {{ alert.category }}</div>
+                <div><strong>Patient ID:</strong> {{ alert.patientId }}</div>
+                <div><strong>Session ID:</strong> {{ alert.sessionId }}</div>
+                <div><strong>Status:</strong> {{ alert.status }}</div>
+            </div>
+
+            <div class="alert-actions">
+                <button class="ack-btn" (click)="acknowledge(alert)">Acknowledge</button>
+                <button class="resolve-btn" (click)="resolve(alert)">Resolve</button>
+            </div>
+        </div>
+    </div>
+</div>

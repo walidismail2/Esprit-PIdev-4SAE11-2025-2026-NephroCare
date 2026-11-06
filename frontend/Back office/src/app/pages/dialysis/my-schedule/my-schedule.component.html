@@ -1,0 +1,101 @@
+<div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+    <div class="border-b border-stroke py-4 px-6.5 dark:border-strokedark flex items-center justify-between">
+        <h3 class="font-medium text-black dark:text-white">My Schedule (Today)</h3>
+
+        <div class="flex flex-wrap gap-3 items-end mb-4">
+            <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-300 mb-1">From</label>
+                <input type="date" [(ngModel)]="fromStr" class="rounded border border-stroke px-3 py-2 text-sm dark:border-strokedark dark:bg-form-input"/>
+            </div>
+
+            <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-300 mb-1">To</label>
+                <input type="date" [(ngModel)]="toStr" class="rounded border border-stroke px-3 py-2 text-sm dark:border-strokedark dark:bg-form-input"/>
+            </div>
+
+            <app-button size="sm" variant="primary" (btnClick)="load()" [disabled]="loading">Apply</app-button>
+        </div>
+    </div>
+
+    <div *ngIf="errorMessage" class="p-6">
+        <div class="rounded border border-red-300 bg-red-50 px-4 py-3 text-red-700">
+            <strong>Error!</strong> {{ errorMessage }}
+        </div>
+    </div>
+
+    <div class="p-6">
+        <div *ngIf="loading" class="text-sm text-gray-500 dark:text-gray-300">Loading...</div>
+
+        <ng-container *ngIf="!loading">
+            <div *ngIf="rows.length === 0" class="rounded border border-stroke p-6 dark:border-strokedark">
+                <p class="text-sm text-gray-600 dark:text-gray-300">No scheduled sessions for today.</p>
+            </div>
+
+            <div *ngIf="rows.length > 0" class="max-w-full overflow-x-auto">
+                <table class="w-full table-auto">
+                    <thead>
+                    <tr class="bg-gray-2 text-left dark:bg-meta-4">
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">Patient</th>
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">Date</th>
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">Shift</th>
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">Access</th>
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">Treatment</th>
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">Status</th>
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">Actions</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    <tr *ngFor="let r of rows" class="border-b border-[#eee] dark:border-strokedark">
+                        <td class="py-5 px-4">
+                            <p class="text-black dark:text-white">{{ r.patientName }}</p>
+                        </td>
+                        <td class="py-5 px-4">
+                            <p class="text-black dark:text-white">{{ r.sched.day }}</p>
+                            <p class="text-xs text-gray-500" *ngIf="r.sched.day === todayStr">Today</p>
+                        </td>
+
+                        <td class="py-5 px-4">
+                            <p class="text-black dark:text-white">{{ r.sched.shift }}</p>
+                        </td>
+
+                        <td class="py-5 px-4">
+                            <p class="text-black dark:text-white">{{ r.accessType }}</p>
+                        </td>
+
+                        <td class="py-5 px-4">
+                            <p class="text-black dark:text-white">{{ r.treatmentStatus }}</p>
+                            <p class="text-xs text-gray-500" *ngIf="r.freqPerWeek != null">Freq: {{ r.freqPerWeek }}/wk</p>
+                        </td>
+
+                        <td class="py-5 px-4">
+                            <app-badge variant="light" size="sm" [color]="statusColor(r.sched.status)">
+                                {{ r.sched.status }}
+                            </app-badge>
+                        </td>
+
+                        <td class="py-5 px-4">
+                            <div class="flex gap-2 flex-wrap">
+                                <app-button size="sm" variant="outline" (btnClick)="view(r)">Open</app-button>
+
+                                <app-button
+                                        size="sm"
+                                        variant="primary"
+                                        (btnClick)="start(r)"
+                                        [disabled]="!canStart(r)">
+                                    Start
+                                </app-button>
+
+                                <p class="text-xs text-gray-500 mt-1" *ngIf="r.sched.status === 'SCHEDULED' && !isToday(r.sched.day)">
+                                    Start is only allowed on the scheduled day (today).
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+
+                </table>
+            </div>
+        </ng-container>
+    </div>
+</div>

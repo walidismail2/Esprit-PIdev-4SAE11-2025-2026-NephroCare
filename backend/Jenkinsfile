@@ -1,0 +1,202 @@
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+  }
+
+  environment {
+    REPO_URL = 'https://github.com/medidfds/Esprit-PIdev-4SAE11-2025-2026-NephroCare.git'
+    BRANCH_NAME = 'main'
+    REGISTRY_NAMESPACE = ''
+    DOCKERFILE_PATH = 'backend/Dockerfile'
+    BACKEND_ROOT = 'backend'
+    FRONTEND_DOCKERFILE_PATH = 'frontend/Dockerfile.frontend'
+    FRONTEND_ROOT = 'frontend'
+    K8S_NAMESPACE = 'nephrocare'
+  }
+
+  stages {
+    stage('Checkout from Git') {
+      steps {
+        git branch: "${BRANCH_NAME}", url: "${REPO_URL}"
+      }
+    }
+
+    stage('Prepare Tags') {
+      steps {
+        script {
+          echo 'Jenkinsfile marker v2 - backend/Jenkinsfile loaded'
+          env.SHORT_SHA = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+          env.IMAGE_TAG = "jenkins-${BUILD_NUMBER}-${SHORT_SHA}"
+          echo "Resolved IMAGE_TAG=${env.IMAGE_TAG}"
+        }
+      }
+    }
+
+    stage('Build/Test/Package per service') {
+      steps {
+        script {
+          def services = [
+            [name: 'discovery-service', path: 'backend/discovery-service'],
+            [name: 'config-server', path: 'backend/config'],
+            [name: 'api-gateway', path: 'backend/Api-Gateway'],
+            [name: 'user-service', path: 'backend/user-service'],
+            [name: 'clinical-service', path: 'backend/clinical'],
+            [name: 'diagnostic-service', path: 'backend/diagnostic-service'],
+            [name: 'dialysis-service', path: 'backend/dialysis-service'],
+            [name: 'hospitalization-service', path: 'backend/Hospitalization-service'],
+            [name: 'order-service', path: 'backend/order-service/order-service'],
+            [name: 'pharmacy-service', path: 'backend/pharmacy-service']
+          ]
+
+          for (svc in services) {
+            stage("Test ${svc.name}") {
+              dir(svc.path) {
+                sh 'mvn -B clean test'
+              }
+            }
+
+            stage("Package ${svc.name}") {
+              dir(svc.path) {
+                sh 'mvn -B -DskipTests package'
+              }
+            }
+          }
+        }
+      }
+    }
+
+    stage('Docker Login') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+          script {
+            env.REGISTRY_NAMESPACE = env.DOCKER_USER
+          }
+          sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+          sh 'echo "Using Docker namespace: $REGISTRY_NAMESPACE"'
+        }
+      }
+    }
+
+    stage('Build + Push Backend Images') {
+      steps {
+        script {
+          def services = [
+            [image: 'discovery-service', dockerPath: 'discovery-service'],
+            [image: 'config-server', dockerPath: 'config'],
+            [image: 'api-gateway', dockerPath: 'Api-Gateway'],
+            [image: 'user-service', dockerPath: 'user-service'],
+            [image: 'clinical-service', dockerPath: 'clinical'],
+            [image: 'diagnostic-service', dockerPath: 'diagnostic-service'],
+            [image: 'dialysis-service', dockerPath: 'dialysis-service'],
+            [image: 'hospitalization-service', dockerPath: 'Hospitalization-service'],
+            [image: 'order-service', dockerPath: 'order-service/order-service'],
+            [image: 'pharmacy-service', dockerPath: 'pharmacy-service']
+          ]
+
+          for (svc in services) {
+            def imageRef = "${env.REGISTRY_NAMESPACE}/${svc.image}:${env.IMAGE_TAG}"
+            sh """
+              docker build \
+                -f ${DOCKERFILE_PATH} \
+                --build-arg SERVICE_PATH=${svc.dockerPath} \
+                -t ${imageRef} \
+                ${BACKEND_ROOT}
+            """
+            sh "docker push ${imageRef}"
+          }
+        }
+      }
+    }
+
+    stage('Build + Push Frontend Images') {
+      steps {
+        script {
+          def frontends = [
+            [image: 'frontoffice-ui', servicePath: 'frontoffice'],
+            [image: 'backoffice-ui', servicePath: 'Back office']
+          ]
+
+          for (ui in frontends) {
+            def imageRef = "${env.REGISTRY_NAMESPACE}/${ui.image}:${env.IMAGE_TAG}"
+            sh """
+              docker build \
+                -f ${FRONTEND_DOCKERFILE_PATH} \
+                --build-arg SERVICE_PATH="${ui.servicePath}" \
+                -t ${imageRef} \
+                ${FRONTEND_ROOT}
+            """
+            sh "docker push ${imageRef}"
+          }
+        }
+      }
+    }
+
+    stage('Deploy K8s (NephroCare + Monitoring)') {
+      steps {
+        withCredentials([file(credentialsId: 'kubeconfig-nephrocare', variable: 'KUBECONFIG_FILE')]) {
+          sh '''
+            export KUBECONFIG="$KUBECONFIG_FILE"
+
+            kubectl apply -f k8s/nephrocare-backend.yaml
+            kubectl apply -f k8s/nephrocare-frontend.yaml
+            kubectl apply -f k8s/monitoring-stack.yaml
+
+            kubectl -n ${K8S_NAMESPACE} set image deploy/discovery-service discovery-service=${REGISTRY_NAMESPACE}/discovery-service:${IMAGE_TAG}
+            kubectl -n ${K8S_NAMESPACE} set image deploy/config-server config-server=${REGISTRY_NAMESPACE}/config-server:${IMAGE_TAG}
+            kubectl -n ${K8S_NAMESPACE} set image deploy/api-gateway api-gateway=${REGISTRY_NAMESPACE}/api-gateway:${IMAGE_TAG}
+            kubectl -n ${K8S_NAMESPACE} set image deploy/user-service user-service=${REGISTRY_NAMESPACE}/user-service:${IMAGE_TAG}
+            kubectl -n ${K8S_NAMESPACE} set image deploy/clinical-service clinical-service=${REGISTRY_NAMESPACE}/clinical-service:${IMAGE_TAG}
+            kubectl -n ${K8S_NAMESPACE} set image deploy/diagnostic-service diagnostic-service=${REGISTRY_NAMESPACE}/diagnostic-service:${IMAGE_TAG}
+            kubectl -n ${K8S_NAMESPACE} set image deploy/dialysis-service dialysis-service=${REGISTRY_NAMESPACE}/dialysis-service:${IMAGE_TAG}
+            kubectl -n ${K8S_NAMESPACE} set image deploy/hospitalization-service hospitalization-service=${REGISTRY_NAMESPACE}/hospitalization-service:${IMAGE_TAG}
+            kubectl -n ${K8S_NAMESPACE} set image deploy/order-service order-service=${REGISTRY_NAMESPACE}/order-service:${IMAGE_TAG}
+            kubectl -n ${K8S_NAMESPACE} set image deploy/pharmacy-service pharmacy-service=${REGISTRY_NAMESPACE}/pharmacy-service:${IMAGE_TAG}
+            kubectl -n ${K8S_NAMESPACE} set image deploy/frontoffice-ui frontoffice-ui=${REGISTRY_NAMESPACE}/frontoffice-ui:${IMAGE_TAG}
+            kubectl -n ${K8S_NAMESPACE} set image deploy/backoffice-ui backoffice-ui=${REGISTRY_NAMESPACE}/backoffice-ui:${IMAGE_TAG}
+          '''
+        }
+      }
+    }
+
+    stage('Verify Rollout') {
+      steps {
+        withCredentials([file(credentialsId: 'kubeconfig-nephrocare', variable: 'KUBECONFIG_FILE')]) {
+          sh '''
+            export KUBECONFIG="$KUBECONFIG_FILE"
+
+            kubectl -n ${K8S_NAMESPACE} rollout status deploy/discovery-service --timeout=240s
+            kubectl -n ${K8S_NAMESPACE} rollout status deploy/config-server --timeout=240s
+            kubectl -n ${K8S_NAMESPACE} rollout status deploy/api-gateway --timeout=240s
+            kubectl -n ${K8S_NAMESPACE} rollout status deploy/user-service --timeout=240s
+            kubectl -n ${K8S_NAMESPACE} rollout status deploy/clinical-service --timeout=240s
+            kubectl -n ${K8S_NAMESPACE} rollout status deploy/diagnostic-service --timeout=240s
+            kubectl -n ${K8S_NAMESPACE} rollout status deploy/dialysis-service --timeout=240s
+            kubectl -n ${K8S_NAMESPACE} rollout status deploy/hospitalization-service --timeout=240s
+            kubectl -n ${K8S_NAMESPACE} rollout status deploy/order-service --timeout=240s
+            kubectl -n ${K8S_NAMESPACE} rollout status deploy/pharmacy-service --timeout=240s
+            kubectl -n ${K8S_NAMESPACE} rollout status deploy/frontoffice-ui --timeout=240s
+            kubectl -n ${K8S_NAMESPACE} rollout status deploy/backoffice-ui --timeout=240s
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "Pipeline SUCCESS ✅ | tag=${IMAGE_TAG}"
+    }
+    failure {
+      echo "Pipeline FAILED ❌ | tag=${IMAGE_TAG}"
+      // Optionnel: active email/slack plugin and add a notifier step here.
+    }
+    always {
+      archiveArtifacts artifacts: '**/target/*.jar', allowEmptyArchive: true
+      sh 'docker logout || true'
+      echo 'Pipeline finished.'
+    }
+  }
+}

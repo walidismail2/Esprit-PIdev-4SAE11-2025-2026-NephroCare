@@ -1,0 +1,36 @@
+# IDE
+.idea/
+**/.idea/
+.vscode/
+*.iml
+
+# Secrets and local cluster credentials
+.env
+**/.env
+kubeconfig*.yaml
+kubeconfig*.yml
+*.kubeconfig
+
+# Build output
+**/node_modules/
+**/dist/
+**/target/
+**/__pycache__/
+**/*.pyc
+**/.ipynb_checkpoints/
+backend/config/${project.build.directory}/
+
+# Archives, installers, and trained models
+*.rar
+*.exe
+*.msi
+*.keras
+*.h5
+*.pkl
+
+# Kidney CT dataset (download separately; do not commit)
+Kidney Project IA/archive/
+
+# OS
+Thumbs.db
+.DS_Store

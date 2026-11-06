@@ -1,0 +1,315 @@
+<div class="stats-page">
+
+  <!-- HEADER -->
+  <div class="stats-header">
+    <div class="stats-header__icon"><i class="fas fa-chart-bar"></i></div>
+    <div>
+      <p class="stats-header__sub">Back Office / Admin</p>
+      <h2 class="stats-header__title">Statistiques Commandes & Livraisons</h2>
+    </div>
+    <button class="btn btn-labeled view" (click)="loadStats()" [disabled]="loading">
+      <i class="fas fa-sync-alt" [class.fa-spin]="loading"></i>
+      Actualiser
+    </button>
+  </div>
+
+  <!-- CHARGEMENT -->
+  <div class="state-loading" *ngIf="loading">
+    <i class="fas fa-spinner fa-spin"></i>
+    <p>Chargement des statistiques...</p>
+  </div>
+
+  <!-- ERREUR -->
+  <div class="state-error" *ngIf="error && !loading">
+    <i class="fas fa-exclamation-circle"></i>
+    <p>Impossible de charger les statistiques.</p>
+    <button class="btn btn-labeled primary" (click)="loadStats()">
+      <i class="fas fa-redo"></i> Réessayer
+    </button>
+  </div>
+
+  <div *ngIf="stats && !loading">
+
+    <!-- SANTÉ GLOBALE -->
+    <div class="health-banner">
+      <div class="health-label">Santé globale du service</div>
+      <div class="health-value">{{ healthLabel }}</div>
+      <div class="health-metrics">
+        <span>
+          <i class="fas fa-check-double"></i>
+          Taux de livraison : <strong>{{ stats.deliveries.successRate }}%</strong>
+        </span>
+        <span>
+          <i class="fas fa-ban"></i>
+          Taux d'annulation : <strong>{{ stats.orders.cancellationRate }}%</strong>
+        </span>
+        <span>
+          <i class="fas fa-euro-sign"></i>
+          CA livré : <strong>{{ stats.orders.totalRevenue | number:'1.2-2' }} €</strong>
+        </span>
+      </div>
+    </div>
+
+    <!-- ONGLETS -->
+    <div class="tabs">
+      <button class="tab-btn" [class.active]="activeView === 'orders'" (click)="activeView = 'orders'">
+        <i class="fas fa-shopping-cart"></i> Commandes
+      </button>
+      <button class="tab-btn" [class.active]="activeView === 'deliveries'" (click)="activeView = 'deliveries'">
+        <i class="fas fa-truck"></i> Livraisons
+      </button>
+      <button class="tab-btn" [class.active]="activeView === 'drivers'" (click)="activeView = 'drivers'">
+        <i class="fas fa-id-badge"></i> Livreurs
+      </button>
+    </div>
+
+    <!-- ════════════ VUE : COMMANDES ════════════ -->
+    <div *ngIf="activeView === 'orders'">
+
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-total">
+          <div class="kpi-icon"><i class="fas fa-shopping-cart"></i></div>
+          <div class="kpi-body">
+            <span class="kpi-value">{{ stats.orders.totalOrders }}</span>
+            <span class="kpi-label">Total commandes</span>
+          </div>
+        </div>
+        <div class="kpi-card kpi-revenue">
+          <div class="kpi-icon"><i class="fas fa-euro-sign"></i></div>
+          <div class="kpi-body">
+            <span class="kpi-value">{{ stats.orders.totalRevenue | number:'1.2-2' }} €</span>
+            <span class="kpi-label">Chiffre d'affaires</span>
+          </div>
+        </div>
+        <div class="kpi-card kpi-avg">
+          <div class="kpi-icon"><i class="fas fa-receipt"></i></div>
+          <div class="kpi-body">
+            <span class="kpi-value">{{ stats.orders.averageOrderValue | number:'1.2-2' }} €</span>
+            <span class="kpi-label">Panier moyen</span>
+          </div>
+        </div>
+        <div class="kpi-card kpi-delivered">
+          <div class="kpi-icon"><i class="fas fa-check-double"></i></div>
+          <div class="kpi-body">
+            <span class="kpi-value">{{ stats.orders.delivered }}</span>
+            <span class="kpi-label">Livrées</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gauges commandes -->
+      <div class="gauges-row">
+
+        <div class="gauge-card">
+          <div class="gauge-title">Taux de livraison</div>
+          <div class="gauge-ring" [ngClass]="gaugeClass(stats.orders.deliveryRate)">
+            <svg viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="32" fill="none"
+                      stroke="var(--gauge-track)" stroke-width="8"/>
+              <circle cx="40" cy="40" r="32" fill="none"
+                      stroke="var(--gauge-color)" stroke-width="8" stroke-linecap="round"
+                      [attr.stroke-dasharray]="stats.orders.deliveryRate * 2.01 + ' 201'"
+                      transform="rotate(-90 40 40)"/>
+            </svg>
+            <div class="gauge-pct">{{ stats.orders.deliveryRate }}%</div>
+          </div>
+          <div class="gauge-sub">{{ stats.orders.delivered }} / {{ stats.orders.totalOrders }}</div>
+        </div>
+
+        <div class="gauge-card">
+          <div class="gauge-title">Taux d'annulation</div>
+          <div class="gauge-ring" [ngClass]="gaugeClass(100 - stats.orders.cancellationRate)">
+            <svg viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="32" fill="none"
+                      stroke="var(--gauge-track)" stroke-width="8"/>
+              <circle cx="40" cy="40" r="32" fill="none"
+                      stroke="var(--gauge-color)" stroke-width="8" stroke-linecap="round"
+                      [attr.stroke-dasharray]="stats.orders.cancellationRate * 2.01 + ' 201'"
+                      transform="rotate(-90 40 40)"/>
+            </svg>
+            <div class="gauge-pct">{{ stats.orders.cancellationRate }}%</div>
+          </div>
+          <div class="gauge-sub">{{ stats.orders.cancelled }} annulées</div>
+        </div>
+
+        <div class="gauge-card">
+          <div class="gauge-title">Taux de confirmation</div>
+          <div class="gauge-ring" [ngClass]="gaugeClass(stats.orders.confirmationRate)">
+            <svg viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="32" fill="none"
+                      stroke="var(--gauge-track)" stroke-width="8"/>
+              <circle cx="40" cy="40" r="32" fill="none"
+                      stroke="var(--gauge-color)" stroke-width="8" stroke-linecap="round"
+                      [attr.stroke-dasharray]="stats.orders.confirmationRate * 2.01 + ' 201'"
+                      transform="rotate(-90 40 40)"/>
+            </svg>
+            <div class="gauge-pct">{{ stats.orders.confirmationRate }}%</div>
+          </div>
+          <div class="gauge-sub">Hors annulées/pending</div>
+        </div>
+
+      </div>
+
+      <!-- Répartition par statut -->
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-chart-bar"></i> Répartition par statut
+        </div>
+        <div class="bar-chart">
+          <div class="bar-row" *ngFor="let b of orderStatusBars">
+            <span class="bar-label">{{ b.label }}</span>
+            <div class="bar-track">
+              <div class="bar-fill" [ngClass]="b.cls" [style.width.%]="b.pct"></div>
+            </div>
+            <span class="bar-count">{{ b.value }}</span>
+            <span class="bar-pct">{{ b.pct | number:'1.0-0' }}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════ VUE : LIVRAISONS ════════════ -->
+    <div *ngIf="activeView === 'deliveries'">
+
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-total">
+          <div class="kpi-icon"><i class="fas fa-truck"></i></div>
+          <div class="kpi-body">
+            <span class="kpi-value">{{ stats.deliveries.totalDeliveries }}</span>
+            <span class="kpi-label">Total livraisons</span>
+          </div>
+        </div>
+        <div class="kpi-card kpi-delivered">
+          <div class="kpi-icon"><i class="fas fa-box-open"></i></div>
+          <div class="kpi-body">
+            <span class="kpi-value">{{ stats.deliveries.delivered }}</span>
+            <span class="kpi-label">Livrées avec succès</span>
+          </div>
+        </div>
+        <div class="kpi-card kpi-failed">
+          <div class="kpi-icon"><i class="fas fa-times-circle"></i></div>
+          <div class="kpi-body">
+            <span class="kpi-value">{{ stats.deliveries.failed }}</span>
+            <span class="kpi-label">Échecs</span>
+          </div>
+        </div>
+        <div class="kpi-card kpi-attempts">
+          <div class="kpi-icon"><i class="fas fa-redo"></i></div>
+          <div class="kpi-body">
+            <span class="kpi-value">{{ stats.deliveries.averageAttempts | number:'1.1-1' }}</span>
+            <span class="kpi-label">Tentatives moy.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gauges livraisons -->
+      <div class="gauges-row">
+
+        <div class="gauge-card">
+          <div class="gauge-title">Taux de succès</div>
+          <div class="gauge-ring" [ngClass]="gaugeClass(stats.deliveries.successRate)">
+            <svg viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="32" fill="none"
+                      stroke="var(--gauge-track)" stroke-width="8"/>
+              <circle cx="40" cy="40" r="32" fill="none"
+                      stroke="var(--gauge-color)" stroke-width="8" stroke-linecap="round"
+                      [attr.stroke-dasharray]="stats.deliveries.successRate * 2.01 + ' 201'"
+                      transform="rotate(-90 40 40)"/>
+            </svg>
+            <div class="gauge-pct">{{ stats.deliveries.successRate }}%</div>
+          </div>
+          <div class="gauge-sub">{{ stats.deliveries.delivered }} livrées</div>
+        </div>
+
+        <div class="gauge-card">
+          <div class="gauge-title">Taux d'échec</div>
+          <div class="gauge-ring" [ngClass]="gaugeClass(100 - stats.deliveries.failureRate)">
+            <svg viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="32" fill="none"
+                      stroke="var(--gauge-track)" stroke-width="8"/>
+              <circle cx="40" cy="40" r="32" fill="none"
+                      stroke="var(--gauge-color)" stroke-width="8" stroke-linecap="round"
+                      [attr.stroke-dasharray]="stats.deliveries.failureRate * 2.01 + ' 201'"
+                      transform="rotate(-90 40 40)"/>
+            </svg>
+            <div class="gauge-pct">{{ stats.deliveries.failureRate }}%</div>
+          </div>
+          <div class="gauge-sub">{{ stats.deliveries.failed }} échecs</div>
+        </div>
+
+      </div>
+
+      <!-- Répartition livraisons -->
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-chart-bar"></i> Répartition par statut
+        </div>
+        <div class="bar-chart">
+          <div class="bar-row" *ngFor="let b of deliveryStatusBars">
+            <span class="bar-label">{{ b.label }}</span>
+            <div class="bar-track">
+              <div class="bar-fill" [ngClass]="b.cls" [style.width.%]="b.pct"></div>
+            </div>
+            <span class="bar-count">{{ b.value }}</span>
+            <span class="bar-pct">{{ b.pct | number:'1.0-0' }}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════ VUE : LIVREURS ════════════ -->
+    <div *ngIf="activeView === 'drivers'">
+
+      <div class="state-empty" *ngIf="stats.deliveries.topDrivers.length === 0">
+        <i class="fas fa-id-badge"></i>
+        <p>Aucun livreur enregistré.</p>
+      </div>
+
+      <div class="card" *ngIf="stats.deliveries.topDrivers.length > 0">
+        <div class="card-title">
+          <i class="fas fa-trophy"></i> Top livreurs
+          <span class="count-badge">Top {{ stats.deliveries.topDrivers.length }}</span>
+        </div>
+        <div class="driver-list">
+          <div class="driver-row" *ngFor="let d of stats.deliveries.topDrivers; let i = index">
+
+            <div class="driver-rank"
+                 [class.rank-gold]="i === 0"
+                 [class.rank-silver]="i === 1"
+                 [class.rank-bronze]="i === 2">
+              {{ i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1) }}
+            </div>
+
+            <div class="driver-avatar">
+              {{ (d.driverName[0] || '?').toUpperCase() }}
+            </div>
+
+            <div class="driver-info">
+              <span class="driver-name">{{ d.driverName }}</span>
+              <span class="driver-sub">{{ d.deliveries }} livraisons • {{ d.successes }} réussies</span>
+            </div>
+
+            <div class="driver-bar-wrap">
+              <div class="driver-bar-track">
+                <div class="driver-bar-fill"
+                     [style.width.%]="d.successRate"
+                     [class.dfill--green]="d.successRate >= 70"
+                     [class.dfill--orange]="d.successRate >= 40 && d.successRate < 70"
+                     [class.dfill--red]="d.successRate < 40">
+                </div>
+              </div>
+              <span class="driver-rate"
+                    [class.rate--green]="d.successRate >= 70"
+                    [class.rate--orange]="d.successRate >= 40 && d.successRate < 70"
+                    [class.rate--red]="d.successRate < 40">
+                {{ d.successRate }}%
+              </span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

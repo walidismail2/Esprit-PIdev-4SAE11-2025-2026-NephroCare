@@ -1,0 +1,92 @@
+<app-modal [isOpen]="isOpen" (close)="onCancel()" className="max-w-[500px] p-6">
+  <div class="space-y-4">
+    <!-- Title -->
+    <h3 class="text-lg font-semibold text-black dark:text-white">{{ title }}</h3>
+    
+    <!-- Message -->
+    <p class="text-gray-700 dark:text-gray-300" *ngIf="message">{{ message }}</p>
+    
+    <!-- Error message -->
+    <div *ngIf="errorMessage" class="mt-2 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-500/15 dark:text-red-400">
+      {{ errorMessage }}
+    </div>
+    
+    <!-- Input for prompt type -->
+    <div *ngIf="type === 'prompt'" class="space-y-2">
+      <input 
+        type="text" 
+        [(ngModel)]="inputValue" 
+        [placeholder]="placeholderText"
+        class="w-full rounded border border-gray-300 bg-transparent px-4 py-2.5 text-gray-800 outline-none focus:border-primary dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+      >
+    </div>
+    
+    <!-- Inputs for triage override type -->
+    <div *ngIf="type === 'triageOverride'" class="space-y-3">
+      <!-- Triage Level Selection -->
+      <div>
+        <label class="mb-2 block text-sm font-medium text-black dark:text-white">Triage Level</label>
+        <select 
+          [(ngModel)]="triageLevel"
+          class="w-full rounded border border-gray-300 bg-transparent px-4 py-2.5 text-gray-800 outline-none focus:border-primary dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+        >
+          <option *ngFor="let level of triageLevels" [value]="level">{{ level }}</option>
+        </select>
+      </div>
+      
+      <!-- Override Reason -->
+      <div>
+        <label class="mb-2 block text-sm font-medium text-black dark:text-white">Override Reason *</label>
+        <textarea 
+          [(ngModel)]="overrideReason"
+          rows="3"
+          placeholder="Enter reason for override"
+          class="w-full rounded border border-gray-300 bg-transparent px-4 py-2.5 text-gray-800 outline-none focus:border-primary dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+        ></textarea>
+      </div>
+      
+      <!-- Max Wait Minutes -->
+      <div>
+        <label class="mb-2 block text-sm font-medium text-black dark:text-white">Max Wait (minutes)</label>
+        <input 
+          type="number"
+          [(ngModel)]="maxWaitMinutes"
+          placeholder="Enter max wait time (optional)"
+          class="w-full rounded border border-gray-300 bg-transparent px-4 py-2.5 text-gray-800 outline-none focus:border-primary dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+        >
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Optional. Value should be between 0 and 360 minutes.
+        </p>
+      </div>
+    </div>
+    
+    <!-- Action buttons -->
+    <div class="mt-6 flex justify-end gap-3">
+      <button 
+        (click)="onCancel()" 
+        type="button"
+        class="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+      >
+        Cancel
+      </button>
+      
+      <button 
+        *ngIf="type === 'confirm'"
+        (click)="onConfirm()" 
+        type="button"
+        class="rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-opacity-90"
+      >
+        Confirm
+      </button>
+      
+      <button 
+        *ngIf="type === 'prompt' || type === 'triageOverride'"
+        (click)="onSubmit()" 
+        type="button"
+        class="rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-opacity-90"
+      >
+        Submit
+      </button>
+    </div>
+  </div>
+</app-modal>

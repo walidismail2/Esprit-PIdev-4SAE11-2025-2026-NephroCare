@@ -1,0 +1,135 @@
+<app-session-header
+        [viewMode]="viewMode"
+        [isNurse]="isNurse"
+        [treatment]="treatment"
+        [sessionsThisWeek]="sessionsThisWeek"
+        [frequencyPerWeek]="frequencyPerWeek"
+        [frequencyLimitReached]="frequencyLimitReached()"
+        [hasAnyOpenSession]="hasAnyOpenSession()"
+        [canUseSolver]="canUseSolver()"
+        [canStartSession]="canStartSession()"
+        (treatmentSessions)="loadTreatmentSessions()"
+        (patientHistory)="loadPatientHistory()"
+        (openSolver)="openSolverModal()"
+        (openStart)="openStartModal()"
+        (goToMySchedule)="goMySchedule()"
+/>
+
+<app-session-analytics
+        *ngIf="viewMode === 'TREATMENT' && hasCompletedSessions"
+        [avgKtV]="avgKtV"
+        [adequacyLabel]="adequacyLabel()"
+        [adequacyColor]="adequacyColor()"
+        [hasAnyOpenSession]="hasAnyOpenSession()"
+        [analyticsLoading]="analyticsLoading"
+        [latestMetrics]="latestMetrics"
+        [metricColorFn]="metricColor.bind(this)"
+        [weekly]="weekly"
+        [series]="series"
+/>
+
+<div *ngIf="errorMessage" class="p-6">
+    <div class="rounded border border-red-300 bg-red-50 px-4 py-3 text-red-700">
+        <strong>Error!</strong> {{ errorMessage }}
+    </div>
+</div>
+<!-- Adequacy Alert / Decision Support -->
+<div *ngIf="viewMode === 'TREATMENT' && hasCompletedSessions && riskLevel() !== 'NONE'" class="p-6">
+    <div
+            class="rounded border px-4 py-3"
+            [ngClass]="riskLevel() === 'HIGH'
+      ? 'border-red-300 bg-red-50 text-red-800'
+      : 'border-yellow-300 bg-yellow-50 text-yellow-800'"
+    >
+        <div class="font-semibold">
+            {{ riskLevel() === 'HIGH' ? 'Adequacy Alert (High Risk)' : 'Adequacy Alert (Moderate)' }}
+        </div>
+        <div class="mt-1 text-sm">{{ riskMessage() }}</div>
+
+        <ul class="mt-2 list-disc pl-5 text-sm">
+            <li *ngFor="let r of recommendations()">{{ r }}</li>
+        </ul>
+    </div>
+</div>
+
+<app-session-table
+        [loading]="loading"
+        [sessions]="filteredSessions"
+        [statusFilter]="statusFilter"
+        [dateFilter]="dateFilter"
+        [searchText]="searchText"
+        [canSeeActionsColumn]="canSeeActionsColumn()"
+        [isNurse]="isNurse"
+        [isAdmin]="isAdmin"
+        [viewMode]="viewMode"
+        [isInadequateFn]="isInadequateSession.bind(this)"
+        [sessionStatusLabelFn]="sessionStatusLabel.bind(this)"
+        [sessionStatusColorFn]="sessionStatusColor.bind(this)"
+        [canEditSessionFn]="canEditSession.bind(this)"
+        [canViewReport]="isDoctor || isAdmin"
+        (viewReport)="openReport($event)"
+        (filtersChange)="statusFilter=$event.statusFilter; dateFilter=$event.dateFilter; searchText=$event.searchText"
+        (edit)="openEditModal($event)"
+        (end)="openEndModal($event)"
+        (delete)="deleteSession($event)"
+/>
+
+<!-- Solver modal -->
+<app-solver-modal
+        [open]="solverOpen"
+        [busy]="solverLoading || confirming"
+        [solverFrom]="solverFrom"
+        [solverTo]="solverTo"
+        [solverCount]="solverCount"
+        [solverError]="solverError"
+        [solverResult]="solverResult"
+        [nurses]="nurses"
+        [nursesLoading]="nursesLoading"
+        [nursesError]="nursesError"
+        [selectedNurseIds]="selectedNurseIds"
+        [confirmError]="confirmError"
+        [confirmSuccess]="confirmSuccess"
+        [nurseLabelFn]="nurseLabel.bind(this)"
+        [canConfirmPlan]="canConfirmPlan()"
+        (closed)="closeSolverModal()"
+        (updateInputs)="solverFrom=$event.solverFrom; solverTo=$event.solverTo; solverCount=$event.solverCount; selectedNurseIds=$event.selectedNurseIds"
+        (runSolver)="runSolver()"
+        (confirm)="confirmPlan()"
+/>
+
+<!-- Start modal -->
+<app-start-session-modal
+        [open]="startOpen"
+        [busy]="submitting"
+        [treatment]="treatment"
+        [todayStr]="todayStr"
+        [defaultShift]="startShift"
+        [shiftLocked]="true"
+        (closed)="closeStartModal()"
+        (submit)="onStartSubmit($event)"
+/>
+
+<!-- End modal -->
+<app-end-session-modal
+        [open]="endOpen"
+        [busy]="submitting"
+        [session]="selectedSession"
+        (closed)="closeEndModal()"
+        (submit)="onEndSubmit($event)"
+/>
+
+<!-- Edit modal -->
+<app-edit-session-modal
+        [open]="editOpen"
+        [busy]="submitting"
+        [session]="editSession"
+        (closed)="closeEditModal()"
+        (submit)="onEditSubmit($event)"
+/>
+<app-session-report-modal
+        [open]="reportOpen"
+        [busy]="reportLoading"
+        [report]="reportData"
+        [error]="reportError"
+        (closed)="closeReport()"
+/>

@@ -1,0 +1,22 @@
+<div class="toast-container">
+  <div
+    *ngFor="let toast of visibleToasts"
+    class="toast toast--{{ toast.type }}"
+    (click)="dismiss(toast.id)">
+
+    <div class="toast-icon">
+      <i class="fas {{ iconFor(toast.type) }}"></i>
+    </div>
+
+    <div class="toast-body">
+      <div class="toast-title">{{ toast.title }}</div>
+      <div class="toast-message">{{ toast.message }}</div>
+    </div>
+
+    <button class="toast-close" (click)="dismiss(toast.id); $event.stopPropagation()">
+      <i class="fas fa-xmark"></i>
+    </button>
+
+    <div class="toast-progress"></div>
+  </div>
+</div>

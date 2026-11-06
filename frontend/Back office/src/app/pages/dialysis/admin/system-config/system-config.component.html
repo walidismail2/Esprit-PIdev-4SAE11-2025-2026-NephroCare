@@ -1,0 +1,83 @@
+<div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+    <div class="border-b border-stroke py-4 px-6.5 dark:border-strokedark">
+        <h3 class="font-medium text-black dark:text-white">System Settings (Dialysis)</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-300 mt-1">
+            Controls capacity per shift, shift times, and Kt/V alert threshold.
+        </p>
+    </div>
+
+    <div class="p-6">
+        <div *ngIf="loading" class="text-sm text-gray-500 dark:text-gray-300">Loading...</div>
+
+        <div *ngIf="error" class="mb-4 rounded border border-red-300 bg-red-50 px-4 py-3 text-red-700">
+            <strong>Error!</strong> {{ error }}
+        </div>
+
+        <div *ngIf="success" class="mb-4 rounded border border-green-300 bg-green-50 px-4 py-3 text-green-700">
+            <strong>OK:</strong> {{ success }}
+        </div>
+
+        <ng-container *ngIf="!loading">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+
+                <div class="rounded border border-stroke p-4 dark:border-strokedark">
+                    <label class="mb-2 block text-black dark:text-white">Machines / Capacity per Shift</label>
+                    <input type="number" min="1" [(ngModel)]="cfg.maxConcurrentSessionsPerShift"
+                           class="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input" />
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-300">
+                        If set to 1, only 1 session can be created in the same day+shift.
+                    </p>
+                </div>
+
+                <div class="rounded border border-stroke p-4 dark:border-strokedark">
+                    <label class="mb-2 block text-black dark:text-white">Kt/V Alert Threshold</label>
+                    <input type="number" step="0.1" min="0.1" [(ngModel)]="cfg.ktvAlertThreshold"
+                           class="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input" />
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-300">Default is 1.2</p>
+                </div>
+
+                <div class="rounded border border-stroke p-4 dark:border-strokedark">
+                    <h4 class="font-medium text-black dark:text-white mb-3">Morning Shift</h4>
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-2 block text-black dark:text-white">Start</label>
+                            <input type="time" [(ngModel)]="cfg.morningStart"
+                                   class="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input" />
+                        </div>
+                        <div>
+                            <label class="mb-2 block text-black dark:text-white">End</label>
+                            <input type="time" [(ngModel)]="cfg.morningEnd"
+                                   class="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded border border-stroke p-4 dark:border-strokedark">
+                    <h4 class="font-medium text-black dark:text-white mb-3">Afternoon Shift</h4>
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-2 block text-black dark:text-white">Start</label>
+                            <input type="time" [(ngModel)]="cfg.afternoonStart"
+                                   class="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input" />
+                        </div>
+                        <div>
+                            <label class="mb-2 block text-black dark:text-white">End</label>
+                            <input type="time" [(ngModel)]="cfg.afternoonEnd"
+                                   class="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input" />
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="mt-6 flex gap-2">
+                <app-button size="md" variant="primary" [disabled]="isInvalid() || saving" (btnClick)="save()">
+                    Save
+                </app-button>
+                <app-button size="md" variant="outline" [disabled]="saving" (btnClick)="load()">
+                    Refresh
+                </app-button>
+            </div>
+        </ng-container>
+    </div>
+</div>

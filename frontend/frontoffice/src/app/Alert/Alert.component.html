@@ -1,0 +1,444 @@
+<!-- alert-table.component.html -->
+<div class="page-shell">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+
+      <h1 class="page-title">Alertes Médicales</h1>
+    </div>
+    <div class="header-right">
+      <div class="search-wrap" *ngIf="activeTab === 'list'">
+        <span class="search-icon">&#8981;</span>
+        <input class="search-input" [(ngModel)]="searchTerm" placeholder="Message, matricule, type…" (ngModelChange)="applyFilters()"/>
+      </div>
+      <select class="filter-select" [(ngModel)]="filterSeverity" (ngModelChange)="applyFilters()" *ngIf="activeTab === 'list'">
+        <option value="">Toutes sévérités</option>
+        <option value="CRITICAL">CRITICAL</option>
+        <option value="HIGH">HIGH</option>
+        <option value="MEDIUM">MEDIUM</option>
+        <option value="LOW">LOW</option>
+      </select>
+      <select class="filter-select" [(ngModel)]="filterResolved" (ngModelChange)="applyFilters()" *ngIf="activeTab === 'list'">
+        <option value="">Tout statut</option>
+        <option value="false">Actives</option>
+        <option value="true">Résolues</option>
+      </select>
+      <button class="btn-create" (click)="showCreate = true">+ Nouvelle Alerte</button>
+    </div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="metrics-bar">
+    <div class="metric" *ngFor="let m of metricsData" [style.borderBottomColor]="m.color">
+      <div class="metric-value" [style.color]="m.color">{{ m.value }}</div>
+      <div class="metric-label">{{ m.label }}</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn" [class.active]="activeTab==='list'" (click)="activeTab='list'; load()">📋 Liste (CRUD)</button>
+    <button class="tab-btn" [class.active]="activeTab==='active'" (click)="activeTab='active'; loadActive()">⚡ F1 — Actives</button>
+    <button class="tab-btn" [class.active]="activeTab==='severity'" (click)="activeTab='severity'">🔍 F2 — Sévérité</button>
+    <button class="tab-btn" [class.active]="activeTab==='resolve'" (click)="activeTab='resolve'">✅ F3 — Résoudre</button>
+    <button class="tab-btn" [class.active]="activeTab==='diagnostic'" (click)="activeTab='diagnostic'">🧪 F4 — Diagnostic</button>
+    <button class="tab-btn" [class.active]="activeTab==='patient'" (click)="activeTab='patient'">👤 F5+F7 — Patient</button>
+    <button class="tab-btn" [class.active]="activeTab==='dashboard'" (click)="activeTab='dashboard'; loadDashboard()">📊 F6 — Dashboard</button>
+  </div>
+
+  <!-- ══ TAB: LIST ══════════════════════════════════════════════ -->
+  <ng-container *ngIf="activeTab === 'list'">
+    <div class="table-wrap">
+      <p class="state-msg" *ngIf="loading">Chargement…</p>
+      <p class="state-msg err" *ngIf="error">{{ error }}</p>
+      <p class="state-msg" *ngIf="!loading && filtered.length === 0 && !error">Aucune alerte.</p>
+      <table class="data-table" *ngIf="!loading && filtered.length > 0">
+        <thead>
+          <tr>
+            <th>Sévérité</th>
+            <th>Type</th>
+            <th>Message</th>
+            <th>Patient</th>
+            <th>Valeur</th>
+            <th>Statut</th>
+            <th>Créée le</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let a of filtered; trackBy: trackById"
+              class="table-row" [class.row-resolved]="a.resolved">
+            <td>
+              <span class="sev-pill" [ngClass]="'sev-' + a.severity">
+                <span class="sev-dot"></span>{{ a.severity }}
+              </span>
+            </td>
+            <td><strong>{{ a.type }}</strong></td>
+            <td class="msg-cell" [title]="a.message">{{ a.message }}</td>
+            <td><span class="chip">{{ a.patientMatricule }}</span></td>
+            <td><strong>{{ a.value }}</strong></td>
+            <td>
+              <span class="status-pill" [ngClass]="a.resolved ? 'status-done' : 'status-active'">
+                {{ a.resolved ? 'Résolue' : 'Active' }}
+              </span>
+            </td>
+            <td class="date-cell">{{ a.createdAt | date:'dd/MM/yy HH:mm' }}</td>
+            <td>
+              <button class="act-btn" (click)="openEdit(a)" title="Modifier" style="color: #6366f1;">✎</button>
+              <button class="act-btn danger" (click)="deleteAlert(a.id)" title="Supprimer">🗑</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="table-footer" *ngIf="filtered.length > 0">
+        {{ filtered.length }} alerte(s) sur {{ alerts.length }} au total
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ══ TAB F1: ACTIVE / CRITICAL ══════════════════════════════ -->
+  <ng-container *ngIf="activeTab === 'active'">
+    <div class="feature-panel">
+      <h3>⚡ F1 — Alertes Actives &amp; Critiques</h3>
+      <p class="desc">GET /active — GET /critical</p>
+      <button class="btn-run" (click)="loadActive()">Rafraîchir</button>
+      <p class="state-msg" *ngIf="activeLoading">Chargement…</p>
+
+      <div class="two-col" *ngIf="!activeLoading">
+        <div>
+          <h4 class="col-title orange">Actives ({{ activeAlerts.length }})</h4>
+          <div class="result-box">
+            <p class="empty-msg" *ngIf="activeAlerts.length === 0">Aucune alerte active.</p>
+            <div class="mini-row" *ngFor="let a of activeAlerts">
+              <span class="sev-pill" [ngClass]="'sev-' + a.severity"><span class="sev-dot"></span>{{ a.severity }}</span>
+              <span class="mini-msg">{{ a.message }}</span>
+              <span class="chip">{{ a.patientMatricule }}</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h4 class="col-title red">CRITICAL Actives ({{ criticalAlerts.length }})</h4>
+          <div class="result-box">
+            <p class="empty-msg" *ngIf="criticalAlerts.length === 0">Aucune alerte critique.</p>
+            <div class="mini-row" *ngFor="let a of criticalAlerts">
+              <span class="sev-pill sev-CRITICAL"><span class="sev-dot"></span>CRITICAL</span>
+              <span class="mini-msg">{{ a.message }}</span>
+              <span class="chip">{{ a.patientMatricule }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ══ TAB F2: SEVERITY ════════════════════════════════════════ -->
+  <ng-container *ngIf="activeTab === 'severity'">
+    <div class="feature-panel">
+      <h3>🔍 F2 — Filtrage par Sévérité</h3>
+      <p class="desc">GET /severity/&#123;level&#125;</p>
+      <div class="panel-form">
+        <div class="field">
+          <label>Niveau</label>
+          <select [(ngModel)]="severityFilter">
+            <option value="CRITICAL">CRITICAL</option>
+            <option value="HIGH">HIGH</option>
+            <option value="MEDIUM">MEDIUM</option>
+            <option value="LOW">LOW</option>
+          </select>
+        </div>
+        <button class="btn-run" (click)="runSeverityFilter()">Filtrer</button>
+      </div>
+      <p class="err-msg" *ngIf="severityError">{{ severityError }}</p>
+      <div class="result-box" *ngIf="severityResult.length > 0">
+        <p class="result-count">{{ severityResult.length }} alerte(s) trouvée(s)</p>
+        <div class="mini-row" *ngFor="let a of severityResult">
+          <span class="sev-pill" [ngClass]="'sev-' + a.severity"><span class="sev-dot"></span>{{ a.severity }}</span>
+          <span class="chip">{{ a.patientMatricule }}</span>
+          <span class="mini-msg">{{ a.message }}</span>
+          <strong>{{ a.value }}</strong>
+          <span class="status-pill" [ngClass]="a.resolved ? 'status-done' : 'status-active'">{{ a.resolved ? 'Résolue' : 'Active' }}</span>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ══ TAB F3: RESOLVE ════════════════════════════════════════ -->
+  <ng-container *ngIf="activeTab === 'resolve'">
+    <div class="feature-panel">
+      <h3>✅ F3 — Résolution d'une Alerte</h3>
+      <p class="desc">PATCH /&#123;id&#125;/resolve?handledBy= — Copiez un ID depuis l'onglet Liste.</p>
+      <div class="panel-form">
+        <div class="field">
+          <label>ID de l'Alerte (UUID)</label>
+          <input type="text" [(ngModel)]="resolveId" placeholder="UUID de l'alerte" class="wide-input">
+        </div>
+        <div class="field">
+          <label>Traitée par</label>
+          <input type="text" [(ngModel)]="resolveHandledBy" placeholder="ex: Dr. Martin">
+        </div>
+        <button class="btn-run" (click)="runResolve()" [disabled]="!resolveId || !resolveHandledBy">Résoudre</button>
+      </div>
+      <p class="err-msg" *ngIf="resolveError">{{ resolveError }}</p>
+      <div class="result-box mt-3" *ngIf="resolveResult">
+        <div class="success-alert">
+          <i class="bi bi-check-circle-fill"></i>
+          <p>Alerte résolue avec succès !</p>
+        </div>
+        <div class="result-details mt-2">
+          <div class="detail-row"><span>ID Alerte:</span> <strong>{{ resolveResult.id }}</strong></div>
+          <div class="detail-row"><span>Traitée par:</span> <strong>{{ resolveResult.handledBy }}</strong></div>
+          <div class="detail-row"><span>Date Résolution:</span> <strong>{{ resolveResult.resolvedAt | date:'short' }}</strong></div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ══ TAB F4: DIAGNOSTIC ════════════════════════════════════ -->
+  <ng-container *ngIf="activeTab === 'diagnostic'">
+    <div class="feature-panel">
+      <h3>🧪 F4 — Générer depuis un Résultat Diagnostic</h3>
+      <p class="desc">POST /from-diagnostic — Le backend analyse la valeur et génère automatiquement la sévérité.</p>
+      <div class="panel-form">
+        <div class="field">
+          <label>Matricule Patient</label>
+          <input type="text" [(ngModel)]="diagDto.patientMatricule" placeholder="ex: MAT-001">
+        </div>
+        <div class="field">
+          <label>Type de Test</label>
+          <select [(ngModel)]="diagDto.testType">
+            <option value="CREATININE">CREATININE</option>
+            <option value="POTASSIUM">POTASSIUM</option>
+            <option value="UREA">UREA</option>
+            <option value="GFR">GFR</option>
+            <option value="PROTEINURIA">PROTEINURIA</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Valeur numérique</label>
+          <input type="number" step="0.1" [(ngModel)]="diagDto.numericValue" placeholder="ex: 12.5" class="short-input">
+        </div>
+        <div class="field">
+          <label>Order ID <span style="color:#ef4444">*</span></label>
+          <input type="text" [(ngModel)]="diagDto.orderId" placeholder="ex: ORD-2026-001">
+        </div>
+        <div class="field">
+          <label>Âge (en années)</label>
+          <input type="number" min="0" max="120" [(ngModel)]="diagAgeYears" placeholder="ex: 20" class="short-input">
+        </div>
+        <div class="field">
+          <label>Poids (kg)</label>
+          <input type="number" step="0.1" [(ngModel)]="diagDto.weight" placeholder="ex: 70.0" class="short-input">
+        </div>
+        <div class="field">
+          <label>Résultat anormal ?</label>
+          <select [(ngModel)]="diagDto.abnormal">
+            <option [ngValue]="true">Oui</option>
+            <option [ngValue]="false">Non</option>
+          </select>
+        </div>
+        <button class="btn-run" (click)="runFromDiagnosticEndpoint()" [disabled]="!diagDto.orderId || !diagDto.patientMatricule">Générer Alerte</button>
+      </div>
+      <p class="err-msg" *ngIf="diagError">{{ diagError }}</p>
+      <div class="result-box mt-3" *ngIf="diagResult">
+        <div class="success-alert">
+          <i class="bi bi-magic"></i>
+          <p>Alerte générée automatiquement !</p>
+        </div>
+        <div class="result-details mt-2">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="sev-pill" [ngClass]="'sev-' + diagResult.severity">
+              <span class="sev-dot"></span>{{ diagResult.severity }}
+            </span>
+            <strong class="text-indigo">{{ diagResult.type }}</strong>
+          </div>
+          <p class="mb-2 fw-semibold text-dark">{{ diagResult.message }}</p>
+          <div class="grid-2-col">
+            <div class="detail-row"><span>Patient:</span> <strong>{{ diagResult.patientMatricule }}</strong></div>
+            <div class="detail-row"><span>Valeur:</span> <strong>{{ diagResult.value }}</strong></div>
+            <div class="detail-row"><span>Order ID:</span> <strong>{{ diagResult.orderId }}</strong></div>
+            <div class="detail-row"><span>Date:</span> <strong>{{ diagResult.createdAt | date:'short' }}</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+
+  <!-- ══ TAB F5+F7: PATIENT ════════════════════════════════════ -->
+  <ng-container *ngIf="activeTab === 'patient'">
+    <div class="feature-panel">
+      <h3>👤 F5 + F7 — Alertes et Stats d'un Patient</h3>
+      <p class="desc">GET /patient/&#123;matricule&#125;/critical — GET /patient/&#123;matricule&#125;/stats</p>
+      <div class="panel-form">
+        <div class="field">
+          <label>Matricule Patient</label>
+          <input type="text" [(ngModel)]="patientMatricule" placeholder="ex: MAT-001">
+        </div>
+        <button class="btn-run btn-danger" (click)="runPatientCritical()" [disabled]="!patientMatricule">F5 — Critiques</button>
+        <button class="btn-run" (click)="runPatientStats()" [disabled]="!patientMatricule">F7 — Stats</button>
+      </div>
+      <p class="err-msg" *ngIf="patientError">{{ patientError }}</p>
+
+      <div *ngIf="patientCritical.length > 0">
+        <h4 class="col-title red">Alertes Critiques ({{ patientCritical.length }})</h4>
+        <div class="result-box">
+          <div class="mini-row" *ngFor="let a of patientCritical">
+            <span class="sev-pill sev-CRITICAL"><span class="sev-dot"></span>CRITICAL</span>
+            <span class="mini-msg">{{ a.message }}</span>
+            <strong>{{ a.value }}</strong>
+            <span class="date-cell">{{ a.createdAt | date:'dd/MM HH:mm' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="patientStats">
+        <h4 class="col-title purple">Statistiques par Sévérité</h4>
+        <div class="stats-grid">
+          <div class="stat-card" *ngFor="let s of statsEntries()">
+            <div class="stat-value">{{ s.value }}</div>
+            <div class="stat-key">{{ s.key }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ══ TAB F6: DASHBOARD ════════════════════════════════════ -->
+  <ng-container *ngIf="activeTab === 'dashboard'">
+    <div class="feature-panel">
+      <h3>📊 F6 — Dashboard : CRITICAL des 24 dernières heures</h3>
+      <p class="desc">GET /dashboard/recent-critical</p>
+      <button class="btn-run" (click)="loadDashboard()">Rafraîchir</button>
+      <p class="state-msg" *ngIf="dashLoading">Chargement…</p>
+
+      <div class="dash-empty" *ngIf="!dashLoading && dashboardAlerts.length === 0">
+        ✅ Aucune alerte critique dans les dernières 24h.
+      </div>
+
+      <div class="dash-grid" *ngIf="!dashLoading && dashboardAlerts.length > 0">
+        <div class="dash-card" *ngFor="let a of dashboardAlerts">
+          <div class="dash-card-header">
+            <span class="sev-pill sev-CRITICAL"><span class="sev-dot"></span>CRITICAL</span>
+            <span class="chip">{{ a.patientMatricule }}</span>
+          </div>
+          <div class="dash-card-msg">{{ a.message }}</div>
+          <div class="dash-card-footer">
+            <span>{{ a.type }} — <strong>{{ a.value }}</strong></span>
+            <span class="date-cell">{{ a.createdAt | date:'dd/MM HH:mm' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+</div>
+
+<!-- ══ MODAL: MODIFIER UNE ALERTE ══════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showEdit">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 class="modal-title">Modifier l'Alerte</h3>
+      <p class="modal-subtitle">Mise à jour du message et de la valeur pour : {{ editingAlert?.patientMatricule }}</p>
+    </div>
+
+    <form #editForm="ngForm" (ngSubmit)="submitEdit()" class="modal-form" novalidate>
+      
+      <div class="modal-field">
+        <label for="editMessage">Message de l'Alerte <span class="req">*</span></label>
+        <textarea id="editMessage" class="modal-textarea" name="editMessage" [(ngModel)]="editAlertDto.message" rows="3" required #editMsgRef="ngModel" placeholder="Entrez le nouveau message..."></textarea>
+        <div *ngIf="editMsgRef.invalid && editMsgRef.touched" class="error-msg">Le message est requis.</div>
+      </div>
+
+      <div class="modal-field">
+        <label for="editValue">Valeur Numérique <span class="req">*</span></label>
+        <input id="editValue" type="number" class="modal-input" name="editValue" [(ngModel)]="editAlertDto.value" required min="0" #editValRef="ngModel">
+        <div *ngIf="editValRef.invalid && editValRef.touched" class="error-msg">
+          <span *ngIf="editValRef.errors?.['min']">La valeur ne peut pas être négative.</span>
+          <span *ngIf="editValRef.errors?.['required']">Valeur requise.</span>
+        </div>
+      </div>
+
+      <div class="modal-field">
+        <label for="editStage">Stade de Fonction Rénale (Optionnel)</label>
+        <input id="editStage" type="text" class="modal-input" name="editStage" [(ngModel)]="editAlertDto.kidneyFunctionStage" placeholder="ex: Stage 3">
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="showEdit = false">Annuler</button>
+        <button type="submit" class="btn-submit" [disabled]="editForm.invalid">Enregistrer les modifications</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══ MODAL: CRÉER UNE ALERTE ══════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showCreate">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 class="modal-title">Nouvelle Alerte Manuelle</h3>
+      <p class="modal-subtitle">Générez une alerte critique pour un patient spécifique</p>
+    </div>
+
+    <form #alertForm="ngForm" (ngSubmit)="submitCreate()" class="modal-form" novalidate>
+      
+      <div class="modal-field">
+        <label>Matricule Patient <span class="req">*</span></label>
+        <div class="select-wrapper">
+          <select class="modal-input" name="patientMatricule" [(ngModel)]="newAlert.patientMatricule" required #patientRef="ngModel">
+            <option value="" disabled selected>Sélectionnez un patient...</option>
+            <option *ngFor="let p of patients" [value]="p.username">
+              {{ p.firstName }} {{ p.lastName }} ({{ p.username }})
+            </option>
+          </select>
+        </div>
+        <div *ngIf="patientRef.invalid && patientRef.touched" class="error-msg">Veuillez choisir un patient.</div>
+      </div>
+
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Type de Test <span class="req">*</span></label>
+        <div class="select-wrapper">
+          <select class="modal-input" name="type" [(ngModel)]="newAlert.type" required>
+            <option value="CREATININE">CREATININE</option>
+            <option value="POTASSIUM">POTASSIUM</option>
+            <option value="UREA">UREA</option>
+            <option value="GFR">GFR</option>
+            <option value="PROTEINURIA">PROTEINURIA</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>Sévérité <span class="req">*</span></label>
+        <div class="select-wrapper">
+          <select class="modal-input" name="severity" [(ngModel)]="newAlert.severity" required>
+            <option value="LOW">LOW</option>
+            <option value="MEDIUM">MEDIUM</option>
+            <option value="HIGH">HIGH</option>
+            <option value="CRITICAL">CRITICAL</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>Valeur <span class="req">*</span></label>
+        <input type="number" class="modal-input" name="value" [(ngModel)]="newAlert.value" 
+               required min="0" #valueRef="ngModel">
+        <div *ngIf="valueRef.invalid && valueRef.touched" class="error-msg">
+          <span *ngIf="valueRef.errors?.['min']">La valeur ne peut pas être négative.</span>
+          <span *ngIf="valueRef.errors?.['required']">Valeur requise.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-field">
+      <label>Message</label>
+      <textarea class="modal-textarea" name="message" [(ngModel)]="newAlert.message" rows="3" placeholder="Description de l'alerte..."></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" (click)="showCreate = false">Annuler</button>
+      <button type="submit" class="btn-submit" [disabled]="alertForm.invalid">Créer l'Alerte</button>
+    </div>
+  </form>
+  </div>
+</div>

@@ -1,0 +1,36 @@
+<div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+    <div class="border-b border-stroke py-4 px-6.5 dark:border-strokedark flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h3 class="font-medium text-black dark:text-white">
+                Sessions
+                <span class="text-primary">({{ viewMode === 'TREATMENT' ? 'Treatment' : 'Patient History' }})</span>
+            </h3>
+
+            <div *ngIf="isNurse && viewMode === 'TREATMENT' && treatment" class="mt-2 flex flex-wrap gap-2 items-center">
+                <app-badge variant="light" size="sm" [color]="frequencyLimitReached ? 'info' : 'success'">
+                    Frequency: {{ sessionsThisWeek }}/{{ frequencyPerWeek || treatment.frequencyPerWeek }}
+                </app-badge>
+
+                <app-badge *ngIf="frequencyLimitReached" variant="light" size="sm" color="info">Frequency Limit Reached</app-badge>
+                <app-badge *ngIf="hasAnyOpenSession" variant="light" size="sm" color="warning">Open Session Exists</app-badge>
+
+                <app-badge *ngIf="treatment.status !== 'ACTIVE'" variant="light" size="sm" color="warning">
+                    Treatment not ACTIVE -> cannot start session
+                </app-badge>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2 items-center justify-end">
+            <app-button size="sm" variant="outline" (btnClick)="treatmentSessions.emit()">Treatment Sessions</app-button>
+            <app-button size="sm" variant="outline" [disabled]="!(treatment?.patientId)" (btnClick)="patientHistory.emit()">Patient History</app-button>
+
+            <app-button *ngIf="canUseSolver" size="sm" variant="outline" (btnClick)="openSolver.emit()">
+                Suggest schedule
+            </app-button>
+
+            <app-button *ngIf="isNurse" size="sm" variant="primary" (btnClick)="goToMySchedule.emit()">
+                My Schedule (Today)
+            </app-button>
+        </div>
+    </div>
+</div>

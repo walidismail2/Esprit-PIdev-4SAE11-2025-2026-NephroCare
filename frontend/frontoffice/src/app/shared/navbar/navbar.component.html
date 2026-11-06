@@ -1,0 +1,196 @@
+<!-- Topbar Start -->
+<div class="container-fluid topbar-strip border-bottom d-none d-lg-block">
+  <div class="container">
+    <div class="row align-items-center py-2">
+      <div class="col-md-6 text-center text-lg-start">
+        <div class="d-inline-flex align-items-center gap-3">
+          <a class="text-decoration-none topbar-link" href="tel:+0123456789">
+            <i class="bi bi-telephone-fill me-1"></i>+012 345 6789
+          </a>
+          <span class="topbar-sep">|</span>
+          <a class="text-decoration-none topbar-link" href="mailto:Medinova@gmail.com">
+            <i class="bi bi-envelope-fill me-1"></i>Medinova@gmail.com
+          </a>
+        </div>
+      </div>
+      <div class="col-md-6 text-center text-lg-end">
+        <div class="d-inline-flex align-items-center gap-2">
+          <a class="topbar-social" href="https://facebook.com"  target="_blank" rel="noopener"><i class="bi bi-facebook"></i></a>
+          <a class="topbar-social" href="https://twitter.com"   target="_blank" rel="noopener"><i class="bi bi-twitter-x"></i></a>
+          <a class="topbar-social" href="https://linkedin.com"  target="_blank" rel="noopener"><i class="bi bi-linkedin"></i></a>
+          <a class="topbar-social" href="https://instagram.com" target="_blank" rel="noopener"><i class="bi bi-instagram"></i></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Topbar End -->
+
+<!-- Navbar Start -->
+<div class="container-fluid sticky-top medinova-nav shadow-sm" [class.nav-scrolled]="scrolled">
+  <div class="container">
+    <nav class="navbar navbar-expand-lg navbar-light py-0">
+
+      <!-- Brand -->
+      <a routerLink="/" class="navbar-brand py-3">
+        <span class="brand-icon"><i class="fa fa-heartbeat"></i></span>
+        <span class="brand-text">nephro<span class="brand-accent">care</span></span>
+      </a>
+
+      <!-- Toggler -->
+      <button class="navbar-toggler border-0" type="button"
+              data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <!-- Links -->
+      <div class="collapse navbar-collapse" id="navbarCollapse">
+        <div class="navbar-nav mx-auto py-0">
+
+          <a routerLink="/"
+             routerLinkActive="active"
+             [routerLinkActiveOptions]="{exact:true}"
+             class="nav-item nav-link">Home</a>
+
+          <a routerLink="/clinical"
+             routerLinkActive="active"
+             class="nav-item nav-link">Clinical</a>
+
+          <a routerLink="/pharmacy"
+             routerLinkActive="active"
+             class="nav-item nav-link">Pharmacy</a>
+             
+          <a routerLink="/order"
+             routerLinkActive="active"
+             class="nav-item nav-link">Orders</a>   
+
+          <a routerLink="/dialysis"
+             routerLinkActive="active"
+             class="nav-item nav-link">Dialysis</a>
+
+          <!-- ── Diagnostic dropdown (Orders + Calendar) ── -->
+          <div class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle"
+               data-bs-toggle="dropdown"
+               role="button"
+               routerLinkActive="active"
+               [routerLinkActiveOptions]="{exact:false}">
+              <i class="bi bi-microscope me-1"></i>Diagnostic
+            </a>
+            <ul class="dropdown-menu border-0 shadow-sm" style="min-width:200px">
+              <li>
+                <a routerLink="/diagnostic"
+                   routerLinkActive="active"
+                   class="dropdown-item d-flex align-items-center gap-2 py-2">
+                  <i class="bi bi-list-ul text-primary"></i>
+                  <div>
+                    <div class="fw-semibold" style="font-size:.85rem">Orders List</div>
+                    <div style="font-size:.7rem;color:#94a3b8">Manage all orders</div>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/diagnostic-calendar"
+                   routerLinkActive="active"
+                   class="dropdown-item d-flex align-items-center gap-2 py-2">
+                  <i class="bi bi-calendar3 text-primary"></i>
+                  <div>
+                    <div class="fw-semibold" style="font-size:.85rem">📅 Calendar</div>
+                    <div style="font-size:.7rem;color:#94a3b8">Schedule by date</div>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/diagnostic-results"
+                   routerLinkActive="active"
+                   class="dropdown-item d-flex align-items-center gap-2 py-2">
+                  <i class="bi bi-clipboard2-pulse text-primary"></i>
+                  <div>
+                    <div class="fw-semibold" style="font-size:.85rem">Results</div>
+                    <div style="font-size:.7rem;color:#94a3b8">Lab and imaging results</div>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </div>
+          <!-- ── /Diagnostic dropdown ── -->
+
+          <a routerLink="/hospitalization"
+             routerLinkActive="active"
+             class="nav-item nav-link">Hospitalization</a>
+
+        </div>
+
+        <!-- ── User Dropdown ── -->
+        <div class="user-menu-wrap py-2 py-lg-0">
+
+          <!-- Trigger button -->
+          <button class="user-trigger" (click)="toggleDropdown()" [class.open]="dropdownOpen">
+            <div class="user-avatar-wrap">
+              <div class="user-initials">{{ getInitials() }}</div>
+              <span class="avatar-status"></span>
+            </div>
+            <div class="user-info d-none d-xl-block">
+              <div class="user-name">{{ username || 'Loading…' }}</div>
+              <div class="user-role">{{ getPrimaryRole() }}</div>
+            </div>
+            <i class="bi bi-chevron-down chevron-icon ms-1 d-none d-xl-inline"></i>
+          </button>
+
+          <!-- Dropdown panel -->
+          <div class="user-dropdown" [class.show]="dropdownOpen">
+
+            <!-- Header -->
+            <div class="dropdown-header">
+              <div class="dh-initials">{{ getInitials() }}</div>
+              <div class="dh-info">
+                <div class="dh-name">{{ username || '—' }}</div>
+                <div class="dh-email">{{ userEmail || '—' }}</div>
+                <span class="dh-badge">● Online</span>
+              </div>
+            </div>
+
+            <div class="dd-divider"></div>
+
+            <button class="dd-item" (click)="goTo('/profile')">
+              <span class="dd-icon"><i class="bi bi-person-fill"></i></span>
+              <div>
+                <div class="dd-label">My Profile</div>
+                <div class="dd-sub">View your information</div>
+              </div>
+            </button>
+
+            <button class="dd-item" (click)="goTo('/settings')">
+              <span class="dd-icon"><i class="bi bi-gear-fill"></i></span>
+              <div>
+                <div class="dd-label">Settings</div>
+                <div class="dd-sub">Preferences & account</div>
+              </div>
+            </button>
+
+            <button class="dd-item" (click)="goTo('/notifications')">
+              <span class="dd-icon"><i class="bi bi-bell-fill"></i></span>
+              <div>
+                <div class="dd-label">Notifications</div>
+                <div class="dd-sub">Manage your alerts</div>
+              </div>
+            </button>
+
+            <div class="dd-divider"></div>
+
+            <button class="dd-item dd-logout" (click)="logout()">
+              <span class="dd-icon"><i class="bi bi-box-arrow-right"></i></span>
+              <div>
+                <div class="dd-label">Logout</div>
+                <div class="dd-sub">End your session</div>
+              </div>
+            </button>
+
+          </div><!-- /dropdown -->
+        </div><!-- /user-menu-wrap -->
+
+      </div>
+    </nav>
+  </div>
+</div>
+<!-- Navbar End -->

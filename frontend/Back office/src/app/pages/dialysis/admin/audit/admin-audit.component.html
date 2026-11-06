@@ -1,0 +1,147 @@
+<div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+    <div
+            class="border-b border-stroke py-4 px-6.5 dark:border-strokedark flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+        <div>
+            <h3 class="font-medium text-black dark:text-white">Audit Logs — Suspended Treatments</h3>
+        </div>
+
+        <div class="flex flex-wrap gap-2 justify-end">
+            <app-button size="sm" variant="outline" (btnClick)="clearFilters()">Reset</app-button>
+            <app-button size="sm" variant="outline" (btnClick)="load()">Refresh</app-button>
+        </div>
+    </div>
+
+    <!-- Error -->
+    <div *ngIf="errorMessage" class="p-6">
+        <div class="rounded border border-red-300 bg-red-50 px-4 py-3 text-red-700">
+            <strong>Error!</strong> {{ errorMessage }}
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="px-6 pt-4 pb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex flex-wrap gap-2 items-center">
+            <label class="text-sm text-gray-600 dark:text-gray-300">Date:</label>
+            <select
+                    [(ngModel)]="dateFilter"
+                    class="rounded border border-stroke px-3 py-2 text-sm dark:border-strokedark dark:bg-form-input"
+            >
+                <option value="ALL">All</option>
+                <option value="TODAY">Today</option>
+                <option value="7D">Last 7 days</option>
+                <option value="30D">Last 30 days</option>
+            </select>
+
+            <label class="ml-3 text-sm text-gray-600 dark:text-gray-300">Sort:</label>
+            <select
+                    [(ngModel)]="sortBy"
+                    class="rounded border border-stroke px-3 py-2 text-sm dark:border-strokedark dark:bg-form-input"
+            >
+                <option value="suspendedAt">Suspended At</option>
+                <option value="patientName">Patient</option>
+                <option value="dialysisType">Type</option>
+                <option value="vascularAccessType">Access</option>
+            </select>
+
+            <select
+                    [(ngModel)]="sortDir"
+                    class="rounded border border-stroke px-3 py-2 text-sm dark:border-strokedark dark:bg-form-input"
+            >
+                <option value="desc">Desc</option>
+                <option value="asc">Asc</option>
+            </select>
+        </div>
+
+        <div class="flex gap-2 items-center">
+            <label class="text-sm text-gray-600 dark:text-gray-300">Search:</label>
+            <input
+                    [(ngModel)]="searchText"
+                    placeholder="patient / type / access / reason"
+                    class="rounded border border-stroke px-3 py-2 text-sm dark:border-strokedark dark:bg-form-input"
+            />
+        </div>
+    </div>
+
+    <div class="p-6">
+        <div *ngIf="loading" class="text-sm text-gray-500 dark:text-gray-300">Loading...</div>
+
+        <ng-container *ngIf="!loading">
+            <ng-container *ngIf="filteredRows.length > 0; else empty">
+                <div class="max-w-full overflow-x-auto">
+                    <table class="w-full table-auto">
+                        <thead>
+                        <tr class="bg-gray-2 text-left dark:bg-meta-4">
+                            <th
+                                    class="py-4 px-4 font-medium text-black dark:text-white cursor-pointer"
+                                    (click)="setSort('patientName')"
+                            >
+                                Patient <span class="ml-1 text-xs">{{ sortIcon('patientName') }}</span>
+                            </th>
+
+                            <th
+                                    class="py-4 px-4 font-medium text-black dark:text-white cursor-pointer"
+                                    (click)="setSort('dialysisType')"
+                            >
+                                Type <span class="ml-1 text-xs">{{ sortIcon('dialysisType') }}</span>
+                            </th>
+
+                            <th
+                                    class="py-4 px-4 font-medium text-black dark:text-white cursor-pointer"
+                                    (click)="setSort('vascularAccessType')"
+                            >
+                                Access <span class="ml-1 text-xs">{{ sortIcon('vascularAccessType') }}</span>
+                            </th>
+
+                            <th
+                                    class="py-4 px-4 font-medium text-black dark:text-white cursor-pointer"
+                                    (click)="setSort('suspendedAt')"
+                            >
+                                Suspended At <span class="ml-1 text-xs">{{ sortIcon('suspendedAt') }}</span>
+                            </th>
+
+                            <th class="py-4 px-4 font-medium text-black dark:text-white">Reason</th>
+                        </tr>
+                        </thead>
+
+                        <tbody>
+                        <tr *ngFor="let r of filteredRows" class="border-b border-[#eee] dark:border-strokedark">
+                            <td class="py-5 px-4 text-black dark:text-white">
+                                {{ r.patientName || '-' }}
+                            </td>
+
+                            <td class="py-5 px-4 text-black dark:text-white">
+                                {{ r.dialysisType || '-' }}
+                            </td>
+
+                            <td class="py-5 px-4 text-black dark:text-white">
+                                {{ r.vascularAccessType || '-' }}
+                            </td>
+
+                            <td class="py-5 px-4 text-black dark:text-white">
+                                {{ r.suspendedAt ? (r.suspendedAt | date : 'short') : '-' }}
+                            </td>
+
+                            <td class="py-5 px-4 text-black dark:text-white">
+                                <app-badge variant="light" size="sm" [color]="reasonColor(r.suspensionReason)">
+                                    {{ r.suspensionReason || '-' }}
+                                </app-badge>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-4 text-xs text-gray-500 dark:text-gray-300">
+                    Showing {{ filteredRows.length }} / {{ rows.length }} entries.
+                </div>
+            </ng-container>
+
+            <ng-template #empty>
+                <div class="rounded border border-stroke p-6 dark:border-strokedark">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">No suspended treatments found.</p>
+                </div>
+            </ng-template>
+        </ng-container>
+    </div>
+</div>

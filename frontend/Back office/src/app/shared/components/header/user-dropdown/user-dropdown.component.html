@@ -1,0 +1,106 @@
+<div class="relative">
+    <!-- TOP USER BUTTON -->
+    <button
+            (click)="toggleDropdown()"
+            class="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400"
+    >
+    <span class="mr-3 flex h-11 w-11 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">
+      {{ initials }}
+    </span>
+
+        <span class="block mr-1 font-medium text-theme-sm">
+      {{ username }}
+    </span>
+
+        <svg
+                [ngClass]="{
+        'stroke-gray-500 dark:stroke-gray-400 transition-transform duration-200': true,
+        'rotate-180': isOpen
+      }"
+                width="18"
+                height="20"
+                viewBox="0 0 18 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+        >
+            <path
+                    d="M4.3125 8.65625L9 13.3437L13.6875 8.65625"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+            />
+        </svg>
+    </button>
+
+    <!-- DROPDOWN -->
+    <app-dropdown
+            [isOpen]="isOpen"
+            (close)="closeDropdown()"
+            className="absolute right-0 mt-[17px] flex w-[260px] flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark"
+    >
+
+        <!-- USER INFO SECTION -->
+        <div class="flex items-center gap-3 p-3 border-b border-gray-200 dark:border-gray-800">
+
+            <div class="flex h-11 w-11 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">
+              {{ initials }}
+            </div>
+
+            <div class="flex flex-col">
+        <span class="font-medium text-gray-700 dark:text-gray-300">
+          {{ displayName }}
+        </span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">{{ email || username }}</span>
+            </div>
+
+        </div>
+
+        <!-- OPTIONAL LINKS (you can remove if not needed) -->
+        <ul class="flex flex-col gap-1 pt-4 pb-3 border-b border-gray-200 dark:border-gray-800">
+
+            <li>
+                <a
+                        routerLink="/profile"
+                        (click)="closeDropdown()"
+                        class="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg text-theme-sm hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+                >
+                    Edit Profile
+                </a>
+            </li>
+
+            <li>
+                <a
+                        routerLink="/settings"
+                        (click)="closeDropdown()"
+                        class="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg text-theme-sm hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+                >
+                    Account Settings
+                </a>
+            </li>
+
+        </ul>
+
+        <!-- ACTION BUTTONS -->
+        <div class="flex flex-col gap-2 pt-3">
+
+            <!-- Logout -->
+            <button
+                    (click)="logout()"
+                    class="w-full flex items-center justify-center px-3 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition"
+            >
+                Logout
+            </button>
+
+            <!-- Register -->
+            <button
+                    (click)="register()"
+                    class="w-full flex items-center justify-center px-3 py-2 text-sm font-medium text-primary border border-primary rounded-lg hover:bg-primary/10 transition"
+            >
+                Register
+            </button>
+
+        </div>
+
+    </app-dropdown>
+</div>

@@ -1,0 +1,29 @@
+<header
+  class="sticky top-0 z-99999 flex w-full border-b border-gray-200 bg-white/95 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/95">
+  <div class="flex w-full items-center justify-between px-4 py-3 xl:px-6">
+    <div class="flex items-center gap-3">
+      <button
+        class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/[0.06]"
+        [ngClass]="{ 'bg-gray-100 dark:bg-white/[0.06]': isMobileOpen$ | async }"
+        (click)="handleToggle()"
+        aria-label="Toggle Sidebar">
+        @if (isMobileOpen$ | async) {
+          <i class="bi bi-x-lg text-sm"></i>
+        } @else {
+          <i class="bi bi-list text-lg"></i>
+        }
+      </button>
+      <div>
+        <h1 class="text-base font-semibold tracking-tight text-gray-900 dark:text-white">Back Office</h1>
+        <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">NephroCare Admin</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <app-theme-toggle-button />
+      <app-notification-dropdown />
+        <app-dialysis-notification/>
+      <app-user-dropdown />
+    </div>
+  </div>
+</header>

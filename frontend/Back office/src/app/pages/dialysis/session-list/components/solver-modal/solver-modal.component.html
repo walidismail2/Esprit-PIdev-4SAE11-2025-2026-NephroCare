@@ -1,0 +1,98 @@
+<app-modal
+        [open]="open"
+        title="Suggest schedule (solver)"
+        width="lg"
+        [busy]="busy"
+        (closed)="closed.emit()"
+>
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+            <label class="mb-2 block text-sm text-gray-700 dark:text-gray-200">From</label>
+            <input type="date" [(ngModel)]="solverFrom" (ngModelChange)="onChange()"
+                   class="w-full rounded border-[1.5px] border-stroke bg-transparent py-2 px-3 outline-none dark:border-form-strokedark dark:bg-form-input" />
+        </div>
+
+        <div>
+            <label class="mb-2 block text-sm text-gray-700 dark:text-gray-200">To</label>
+            <input type="date" [(ngModel)]="solverTo" (ngModelChange)="onChange()"
+                   class="w-full rounded border-[1.5px] border-stroke bg-transparent py-2 px-3 outline-none dark:border-form-strokedark dark:bg-form-input" />
+        </div>
+
+        <div>
+            <label class="mb-2 block text-sm text-gray-700 dark:text-gray-200">Count (sessions)</label>
+            <input type="number" min="1" max="12" [(ngModel)]="solverCount" (ngModelChange)="onChange()"
+                   class="w-full rounded border-[1.5px] border-stroke bg-transparent py-2 px-3 outline-none dark:border-form-strokedark dark:bg-form-input" />
+            <p class="mt-1 text-xs text-gray-500">Example: 3 sessions for next week</p>
+        </div>
+
+        <div>
+            <label class="mb-2 block text-sm text-gray-700 dark:text-gray-200">Nurses pool</label>
+
+            <div *ngIf="nursesLoading" class="text-xs text-gray-500">Loading nurses...</div>
+            <div *ngIf="nursesError" class="text-xs text-red-600">{{ nursesError }}</div>
+
+            <select multiple [(ngModel)]="selectedNurseIds" (ngModelChange)="onChange()"
+                    class="w-full h-[120px] rounded border-[1.5px] border-stroke bg-transparent py-2 px-3 outline-none dark:border-form-strokedark dark:bg-form-input">
+                <option *ngFor="let n of nurses" [value]="n.id">
+                    {{ n.fullName }} {{ n.email ? '(' + n.email + ')' : '' }}
+                </option>
+            </select>
+
+            <p class="mt-1 text-xs text-gray-500">Solver will assign one nurse per slot (must be free).</p>
+        </div>
+    </div>
+
+    <div *ngIf="solverError" class="mt-4 rounded border border-red-300 bg-red-50 px-4 py-3 text-red-700">
+        <strong>Error!</strong> {{ solverError }}
+    </div>
+
+    <div *ngIf="confirmError" class="mt-4 rounded border border-red-300 bg-red-50 px-4 py-3 text-red-700">
+        <strong>Error!</strong> {{ confirmError }}
+    </div>
+
+    <div *ngIf="confirmSuccess" class="mt-4 rounded border border-green-300 bg-green-50 px-4 py-3 text-green-700">
+        <strong>OK!</strong> {{ confirmSuccess }}
+    </div>
+
+    <div class="mt-4 flex gap-2">
+        <app-button size="sm" variant="primary" [disabled]="busy" (btnClick)="runSolver.emit()">Run solver</app-button>
+        <app-button size="sm" variant="outline" [disabled]="busy" (btnClick)="closed.emit()">Close</app-button>
+        <app-button size="sm" variant="primary" [disabled]="busy || !canConfirmPlan" (btnClick)="confirm.emit()">Confirm plan</app-button>
+    </div>
+
+    <div class="mt-6">
+        <div *ngIf="solverResult && solverResult.feasible" class="rounded border border-stroke p-4 dark:border-strokedark">
+            <p class="text-sm font-medium text-black dark:text-white">Proposed plan</p>
+
+            <div class="mt-3 max-w-full overflow-x-auto">
+                <table class="w-full table-auto">
+                    <thead>
+                    <tr class="bg-gray-2 text-left dark:bg-meta-4">
+                        <th class="py-3 px-3 font-medium text-black dark:text-white">Day</th>
+                        <th class="py-3 px-3 font-medium text-black dark:text-white">Shift</th>
+                        <th class="py-3 px-3 font-medium text-black dark:text-white">Nurse</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr *ngFor="let p of solverResult.plan" class="border-b border-[#eee] dark:border-strokedark">
+                        <td class="py-3 px-3 text-black dark:text-white">{{ p.day }}</td>
+                        <td class="py-3 px-3 text-black dark:text-white">{{ p.shift }}</td>
+                        <td class="py-3 px-3 text-black dark:text-white">{{ nurseLabelFn(p.nurseId) }}</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="mt-3 text-xs text-gray-500 dark:text-gray-300">
+                Click “Confirm plan” to save these slots as Scheduled Sessions.
+            </p>
+        </div>
+
+        <div *ngIf="solverResult && !solverResult.feasible" class="rounded border border-stroke p-4 dark:border-strokedark">
+            <p class="text-sm font-medium text-black dark:text-white">Not feasible</p>
+            <ul class="mt-2 list-disc pl-5 text-sm text-gray-700 dark:text-gray-200">
+                <li *ngFor="let v of solverResult.violations">{{ v.type }} — {{ v.message }}</li>
+            </ul>
+        </div>
+    </div>
+</app-modal>

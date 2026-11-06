@@ -1,0 +1,858 @@
+<!-- nutrition.component.html -->
+<div class="min-h-screen bg-gray-50 px-4 py-8 font-outfit dark:bg-gray-900">
+  <div class="mx-auto max-w-7xl">
+
+    <!-- ── PAGE HEADER ── -->
+    <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <p class="text-theme-sm font-medium uppercase tracking-widest text-brand-500 mb-1">Nutrition Module</p>
+        <h1 class="text-title-md font-semibold text-gray-900 dark:text-white/90">
+          Nutrition Plan
+          <span class="ml-2 font-mono text-base font-normal text-gray-400">#{{ hospitalizationId }}</span>
+        </h1>
+        <p *ngIf="patientFullName" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <span class="font-medium text-gray-700 dark:text-gray-300">{{ patientFullName }}</span>
+        </p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span *ngIf="plan?.riskLevel"
+              class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
+              [ngClass]="riskColors[plan!.riskLevel!]">
+          <span class="h-1.5 w-1.5 rounded-full"
+                [ngClass]="plan!.riskLevel === 'NORMAL' ? 'bg-success-500' : plan!.riskLevel === 'MODERATE' ? 'bg-warning-500' : 'bg-error-500'"></span>
+          Risk: {{ plan!.riskLevel! | titlecase }}
+        </span>
+        <span *ngIf="plan?.trend"
+              class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
+              [ngClass]="trendColors[plan!.trend!]">
+          {{ trendIcon(plan!.trend!) }} {{ plan!.trend! | titlecase }}
+        </span>
+        <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
+              [ngClass]="profile ? 'bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-400'
+                                 : 'bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-400'">
+          <span class="h-1.5 w-1.5 rounded-full"
+                [ngClass]="profile ? 'bg-success-500' : 'bg-warning-500'"></span>
+          {{ profile ? 'Profile Ready' : 'No Profile' }}
+        </span>
+        <a routerLink="/hospitalization"
+           class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700
+                  shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+          </svg>
+          Back
+        </a>
+      </div>
+    </div>
+
+    <!-- ══ NO PLAN YET ══ -->
+    <div *ngIf="!loadingPlan && !plan"
+         class="mb-8 flex flex-col items-center justify-center rounded-2xl border border-dashed border-brand-200 bg-brand-50/40
+                py-16 dark:border-brand-500/20 dark:bg-brand-500/5">
+      <span class="flex h-14 w-14 items-center justify-center rounded-xl bg-brand-100 mb-4 dark:bg-brand-500/20">
+        <svg class="h-7 w-7 text-brand-500 dark:text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+      </span>
+      <p class="mb-1 text-base font-semibold text-gray-800 dark:text-white/90">No nutrition plan yet</p>
+      <p class="mb-2 text-sm text-gray-400">Auto-generate a plan using the patient's clinical profile</p>
+
+      <div *ngIf="!profile && !loadingProfile"
+           class="mb-5 flex items-center gap-2 rounded-xl border border-warning-200 bg-warning-50 px-4 py-3 text-xs text-warning-700 dark:border-warning-500/20 dark:bg-warning-500/10 dark:text-warning-400">
+        <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+        </svg>
+        Patient profile not found. Create it first to enable precise diet calculation.
+        <button (click)="setTab('profile')"
+                class="ml-2 font-semibold underline underline-offset-2 hover:text-warning-900 transition">
+          Create Profile →
+        </button>
+      </div>
+
+      <button (click)="suggestPlan()" [disabled]="!profile"
+              class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-2.5 text-sm font-medium text-white
+                     shadow-theme-xs transition hover:bg-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-500/20
+                     disabled:cursor-not-allowed disabled:opacity-50">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+        Auto-suggest diet plan
+      </button>
+      <p *ngIf="planError" class="mt-3 text-xs text-error-600">{{ planError }}</p>
+    </div>
+
+    <!-- Loading skeleton -->
+    <div *ngIf="loadingPlan" class="mb-8 space-y-4">
+      <div class="h-12 w-full animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800"></div>
+      <div class="h-48 w-full animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800"></div>
+    </div>
+
+    <!-- ══ TAB BAR ══ -->
+    <div class="mb-6 flex items-center gap-1 overflow-x-auto rounded-xl border border-gray-200 bg-white p-1
+                shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03]">
+      <button *ngFor="let tab of ([
+        { key: 'summary', label: 'Daily Summary',   icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+        { key: 'plan',    label: 'Diet Plan',        icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
+        { key: 'risk',    label: 'Risk Assessment',  icon: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z' },
+        { key: 'trend',   label: 'Weekly Trend',     icon: 'M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941' },
+        { key: 'meals',   label: 'Meal Log',         icon: 'M6.115 5.19l.319 1.913A6 6 0 008.11 10.36L9.75 12l-.387.775c-.217.433-.132.956.21 1.298l1.348 1.348c.21.21.329.497.329.795v1.089c0 .426.24.815.622 1.006l.153.076c.433.217.956.132 1.298-.21l.723-.723a8.7 8.7 0 002.288-4.042 1.087 1.087 0 00-.358-1.099l-1.33-1.108c-.251-.21-.582-.299-.905-.245l-1.17.195a1.125 1.125 0 01-.98-.314l-.295-.295a1.125 1.125 0 010-1.591l.13-.132a1.125 1.125 0 011.3-.21l.603.302a.809.809 0 001.086-1.086L14.25 7.5l1.256-.837a4.5 4.5 0 001.528-1.732l.146-.292' },
+        { key: 'profile', label: 'Patient Profile',  icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' }
+      ])"
+             type="button"
+             (click)="setTab(tab.key)"
+             class="flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-xs font-medium transition-all duration-150 min-w-max relative"
+             [ngClass]="activeTab === tab.key
+               ? 'bg-brand-500 text-white shadow-theme-xs'
+               : 'text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-white/[0.04]'">
+        <svg class="h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" [attr.d]="tab.icon"/>
+        </svg>
+        {{ tab.label }}
+        <span *ngIf="tab.key === 'profile' && !profile && activeTab !== 'profile'"
+              class="absolute right-2 top-2 h-2 w-2 rounded-full bg-warning-500"></span>
+      </button>
+    </div>
+
+    <!-- ══ TABS THAT REQUIRE A PLAN ══ -->
+    <ng-container *ngIf="plan">
+
+      <!-- ── DAILY SUMMARY ── -->
+      <div *ngIf="activeTab === 'summary'">
+        <div class="mb-5 flex items-center gap-3">
+          <label class="text-theme-sm font-medium text-gray-700 dark:text-gray-400">Date</label>
+          <input type="date" [(ngModel)]="summaryDate" [max]="todayIso.slice(0,10)"
+                 class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-theme-sm text-gray-800 outline-none transition
+                        focus:border-brand-300 focus:ring-4 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"/>
+          <button (click)="loadSummary()"
+                  class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-brand-600">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Refresh
+          </button>
+        </div>
+
+        <div *ngIf="loadingSummary" class="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-6">
+          <div *ngFor="let i of [1,2,3,4]" class="h-20 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800"></div>
+        </div>
+
+        <ng-container *ngIf="!loadingSummary && summary">
+          <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div *ngFor="let m of [
+              { label: 'Calories', value: summary.consumed.calories, unit: 'kcal', target: plan!.targetCalories, pct: summary.achievementPct.calories },
+              { label: 'Protein',  value: summary.consumed.proteinG, unit: 'g',    target: plan!.targetProteinG, pct: summary.achievementPct.protein  },
+              { label: 'Carbs',    value: summary.consumed.carbsG,   unit: 'g',    target: plan!.targetCarbsG,   pct: summary.achievementPct.carbs    },
+              { label: 'Fat',      value: summary.consumed.fatG,     unit: 'g',    target: plan!.targetFatG,     pct: summary.achievementPct.fat      }
+            ]" class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+              <p class="mb-1 text-xs text-gray-400 dark:text-gray-500">{{ m.label }}</p>
+              <p class="text-2xl font-semibold text-gray-900 dark:text-white/90">{{ m.value }}<span class="ml-1 text-sm font-normal text-gray-400">{{ m.unit }}</span></p>
+              <p class="mt-0.5 text-xs text-gray-400">of {{ m.target }} {{ m.unit }}</p>
+              <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                <div class="h-full rounded-full transition-all duration-700" [ngClass]="barColor(m.pct)" [style.width]="barWidth(m.pct)"></div>
+              </div>
+              <p class="mt-1 text-right text-xs font-medium" [ngClass]="achievementColor(m.pct)">{{ m.pct }}%</p>
+            </div>
+          </div>
+
+          <div *ngIf="summary.recommendations.length > 0"
+               class="mb-6 rounded-xl border border-warning-200 bg-warning-50 p-4 dark:border-warning-500/20 dark:bg-warning-500/10">
+            <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-warning-700 dark:text-warning-400">Diet Recommendations</p>
+            <ul class="space-y-1.5">
+              <li *ngFor="let rec of summary.recommendations" class="flex items-start gap-2 text-xs text-warning-700 dark:text-warning-400">
+                <svg class="mt-0.5 h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                {{ rec }}
+              </li>
+            </ul>
+          </div>
+
+          <div class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-white/[0.03]">
+            <div class="border-b border-gray-100 px-6 py-4 dark:border-gray-800">
+              <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">
+                Meals on {{ summary.date }}
+                <span class="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-white/[0.08] dark:text-gray-400">{{ summary.meals.length }}</span>
+              </h3>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-theme-sm" *ngIf="summary.meals.length > 0">
+                <thead>
+                  <tr class="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/60">
+                    <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Meal</th>
+                    <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Time</th>
+                    <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Calories</th>
+                    <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Protein</th>
+                    <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Carbs</th>
+                    <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Fat</th>
+                    <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Consumed</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                  <tr *ngFor="let m of summary.meals" class="hover:bg-gray-50/60 dark:hover:bg-white/[0.02]">
+                    <td class="px-5 py-4 font-medium text-gray-800 dark:text-white/90">{{ mealTypeLabel(m.mealType) }}</td>
+                    <td class="px-5 py-4 text-gray-500 whitespace-nowrap dark:text-gray-400">{{ m.recordedAt | date:'HH:mm' }}</td>
+                    <td class="px-5 py-4 text-gray-700 dark:text-gray-300">{{ m.calories }} kcal</td>
+                    <td class="px-5 py-4 text-gray-700 dark:text-gray-300">{{ m.proteinG }} g</td>
+                    <td class="px-5 py-4 text-gray-700 dark:text-gray-300">{{ m.carbsG }} g</td>
+                    <td class="px-5 py-4 text-gray-700 dark:text-gray-300">{{ m.fatG }} g</td>
+                    <td class="px-5 py-4">
+                      <div class="flex items-center gap-2">
+                        <div class="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                          <div class="h-full rounded-full transition-all" [ngClass]="consumptionBarColor(m.consumptionPercent)" [style.width]="m.consumptionPercent + '%'"></div>
+                        </div>
+                        <span class="text-xs font-medium" [ngClass]="achievementColor(m.consumptionPercent)">{{ m.consumptionPercent }}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div *ngIf="summary.meals.length === 0" class="px-5 py-10 text-center text-sm text-gray-400">No meals logged for this date.</div>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+
+      <!-- ── DIET PLAN ── -->
+      <div *ngIf="activeTab === 'plan'">
+        <div class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <div class="flex items-center gap-3 border-b border-gray-100 px-6 py-5 dark:border-gray-800">
+            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-500/[0.12]">
+              <svg class="h-5 w-5 text-brand-500 dark:text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+            </span>
+            <div>
+              <h2 class="text-lg font-semibold text-gray-800 dark:text-white/90">Edit Diet Plan</h2>
+              <p class="mt-0.5 text-xs text-gray-400">Created {{ plan!.createdAt | date:'yyyy-MM-dd' }}</p>
+            </div>
+          </div>
+          <div class="p-6">
+            <form [formGroup]="planForm" (ngSubmit)="savePlan()">
+              <div class="mb-5">
+                <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Diet Type <span class="text-error-500">*</span></label>
+                <div class="flex flex-wrap gap-2">
+                  <button *ngFor="let dt of dietTypes" type="button" (click)="planForm.get('dietType')?.setValue(dt.value)"
+                          class="rounded-lg border px-3 py-1.5 text-xs font-medium transition-all duration-150"
+                          [ngClass]="planForm.get('dietType')?.value === dt.value
+                            ? 'border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-500 dark:bg-brand-500/10 dark:text-brand-300'
+                            : 'border-gray-200 bg-white text-gray-600 hover:border-brand-300 dark:border-gray-700 dark:bg-white/[0.03] dark:text-gray-400'">
+                    {{ dt.label }}
+                  </button>
+                </div>
+                <p *ngIf="planFieldError('dietType','required')" class="mt-1.5 text-xs text-error-600">Please select a diet type</p>
+              </div>
+              <div class="mb-5 grid grid-cols-2 gap-5 sm:grid-cols-4">
+                <div *ngFor="let f of [
+                  { ctrl: 'targetCalories', label: 'Target Calories', unit: 'kcal', min: 500,  max: 5000 },
+                  { ctrl: 'targetProteinG', label: 'Protein Target',  unit: 'g',    min: 0,    max: 500  },
+                  { ctrl: 'targetCarbsG',   label: 'Carbs Target',    unit: 'g',    min: 0,    max: 800  },
+                  { ctrl: 'targetFatG',     label: 'Fat Target',      unit: 'g',    min: 0,    max: 300  }
+                ]">
+                  <div>
+                    <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">
+                      {{ f.label }} <span class="text-error-500">*</span>
+                      <span class="ml-1 text-xs font-normal text-gray-400">({{ f.unit }})</span>
+                    </label>
+                    <input type="number" [formControlName]="f.ctrl" [min]="f.min" [max]="f.max"
+                           [ngClass]="planFieldError(f.ctrl,'required')||planFieldError(f.ctrl,'min')||planFieldError(f.ctrl,'max') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                           class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 outline-none transition
+                                  focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:bg-gray-900 dark:text-white/90"/>
+                    <p *ngIf="planFieldError(f.ctrl,'required')" class="mt-1 text-xs text-error-600">Required</p>
+                    <p *ngIf="planFieldError(f.ctrl,'min')||planFieldError(f.ctrl,'max')" class="mt-1 text-xs text-error-600">{{ f.min }}–{{ f.max }} {{ f.unit }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="mb-7 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div>
+                  <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Notes</label>
+                  <textarea formControlName="notes" rows="3" placeholder="Clinical notes or dietary restrictions..."
+                            class="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 placeholder-gray-400 outline-none transition
+                                   focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"></textarea>
+                  <p class="mt-1 ml-auto w-fit text-xs text-gray-400">{{ planForm.get('notes')?.value?.length || 0 }}/255</p>
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Prescribed By</label>
+                  <div class="flex items-center gap-2.5 rounded-xl border border-gray-200 bg-gray-100 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-800">
+                    <div class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-500 text-xs font-bold text-white">{{ currentUserName | slice:0:1 }}</div>
+                    <span class="text-theme-sm font-semibold text-gray-800 dark:text-white/90">{{ currentUserName }}</span>
+                    <svg class="ml-auto h-4 w-4 flex-shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                  </div>
+                  <p class="mt-1.5 text-xs text-gray-400">Automatically set from your logged-in account.</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <button type="submit" [disabled]="savingPlan"
+                        class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-2.5 text-theme-sm font-medium text-white
+                               shadow-theme-xs transition hover:bg-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-500/20 disabled:opacity-60">
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                  {{ savingPlan ? 'Saving…' : 'Save Plan' }}
+                </button>
+                <button type="button" (click)="suggestPlan()"
+                        class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-2.5 text-theme-sm font-medium text-gray-700
+                               shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                  Re-suggest
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── RISK ASSESSMENT ── -->
+      <div *ngIf="activeTab === 'risk'">
+        <div *ngIf="loadingRisk" class="grid grid-cols-1 gap-4 sm:grid-cols-4 mb-6">
+          <div *ngFor="let i of [1,2,3,4]" class="h-20 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800"></div>
+        </div>
+        <ng-container *ngIf="!loadingRisk && risk">
+
+          <!-- ── Stat cards ── -->
+          <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
+            <!-- Risk level -->
+            <div class="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+              <p class="mb-2 text-xs text-gray-400">Risk level</p>
+              <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold" [ngClass]="riskColors[risk.riskLevel]">
+                <span class="h-2 w-2 rounded-full" [ngClass]="risk.riskLevel==='NORMAL' ? 'bg-success-500' : risk.riskLevel==='MODERATE' ? 'bg-warning-500' : 'bg-error-500'"></span>
+                {{ risk.riskLevel | titlecase }}
+              </span>
+            </div>
+            <!-- Consecutive low days -->
+            <div class="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+              <p class="mb-1 text-xs text-gray-400">Consecutive low-intake days</p>
+              <p class="text-3xl font-semibold text-gray-900 dark:text-white/90">{{ risk.consecutiveLowDays }}<span class="text-sm font-normal text-gray-400 ml-1">/ last 7</span></p>
+            </div>
+            <!-- ✅ Fixed: was averageCalorieAchievement — now averageCompositeScore -->
+            <div class="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+              <p class="mb-1 text-xs text-gray-400">Avg composite score (7d)</p>
+              <p class="text-3xl font-semibold dark:text-white/90" [ngClass]="achievementColor(risk.averageCompositeScore)">{{ risk.averageCompositeScore }}%</p>
+            </div>
+            <!-- ✅ New: volatility score -->
+            <div class="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+              <p class="mb-1 text-xs text-gray-400">Intake volatility (σ)</p>
+              <p class="text-3xl font-semibold dark:text-white/90"
+                 [ngClass]="risk.volatilityScore > 25 ? 'text-warning-600 dark:text-warning-400' : 'text-success-600 dark:text-success-400'">
+                {{ risk.volatilityScore }}%
+              </p>
+              <p class="mt-0.5 text-xs text-gray-400">
+                {{ risk.volatilityScore > 25 ? 'Erratic intake pattern' : 'Stable intake pattern' }}
+              </p>
+            </div>
+          </div>
+
+          <!-- ✅ New: 7-day macro averages -->
+          <div class="mb-6 rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-white/[0.03]">
+            <div class="border-b border-gray-100 px-6 py-4 dark:border-gray-800">
+              <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">7-day macro averages</h3>
+            </div>
+            <div class="grid grid-cols-2 gap-4 p-5 sm:grid-cols-4">
+              <div *ngFor="let m of [
+                { key: 'calories', label: 'Calories' },
+                { key: 'protein',  label: 'Protein'  },
+                { key: 'carbs',    label: 'Carbs'    },
+                { key: 'fat',      label: 'Fat'      }
+              ]">
+                <p class="mb-1 text-xs text-gray-400">{{ m.label }}</p>
+                <p class="text-2xl font-semibold dark:text-white/90"
+                   [ngClass]="achievementColor(risk.macroAverageAchievements[m.key])">
+                  {{ risk.macroAverageAchievements[m.key] }}%
+                </p>
+                <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                  <div class="h-full rounded-full transition-all duration-700"
+                       [ngClass]="barColor(risk.macroAverageAchievements[m.key])"
+                       [style.width]="barWidth(risk.macroAverageAchievements[m.key])"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Risk triggers -->
+          <div class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-white/[0.03]">
+            <div class="border-b border-gray-100 px-6 py-4 dark:border-gray-800"><h3 class="text-base font-semibold text-gray-800 dark:text-white/90">Risk triggers</h3></div>
+            <div class="p-5 space-y-3">
+              <div *ngIf="risk.triggers.length === 0" class="flex items-center gap-2 rounded-lg bg-success-50 px-4 py-3 text-sm text-success-700 dark:bg-success-500/10 dark:text-success-400">
+                <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                No risk triggers — nutritional intake is on target.
+              </div>
+              <div *ngFor="let t of risk.triggers" class="flex items-start gap-3 rounded-lg border px-4 py-3 text-sm"
+                   [ngClass]="risk.riskLevel === 'CRITICAL' ? 'border-error-200 bg-error-50 text-error-700 dark:border-error-500/20 dark:bg-error-500/10 dark:text-error-400'
+                              : risk.riskLevel === 'HIGH'   ? 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-400'
+                              : 'border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-500/20 dark:bg-warning-500/10 dark:text-warning-400'">
+                <svg class="mt-0.5 h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                </svg>
+                {{ t }}
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 flex justify-end">
+            <button (click)="loadRisk()" class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              Re-assess now
+            </button>
+          </div>
+        </ng-container>
+      </div>
+
+      <!-- ── WEEKLY TREND ── -->
+      <div *ngIf="activeTab === 'trend'">
+        <div *ngIf="loadingTrend" class="h-48 w-full animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800"></div>
+        <ng-container *ngIf="!loadingTrend && trend">
+
+          <!-- ✅ Fixed: was trend.trend — now trend.overallTrend -->
+          <div class="mb-6 flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03]">
+            <span class="text-3xl font-bold">{{ trendIcon(trend.overallTrend) }}</span>
+            <div>
+              <p class="text-xs text-gray-400 mb-1">7-day intake trend</p>
+              <span class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold" [ngClass]="trendColors[trend.overallTrend]">{{ trend.overallTrend | titlecase }}</span>
+            </div>
+            <div class="ml-2 flex items-center gap-1.5 rounded-lg border border-gray-100 bg-gray-50 px-3 py-1.5 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+              Slope <span class="font-semibold" [ngClass]="trend.overallSlope > 0 ? 'text-success-600 dark:text-success-400' : trend.overallSlope < 0 ? 'text-error-600 dark:text-error-400' : ''">
+                {{ trend.overallSlope > 0 ? '+' : '' }}{{ trend.overallSlope }}%/day
+              </span>
+            </div>
+            <button (click)="loadTrend()" class="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              Refresh
+            </button>
+          </div>
+
+          <!-- ✅ New: per-macro trend badges -->
+          <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div *ngFor="let m of [
+              { key: 'calories', label: 'Calories' },
+              { key: 'protein',  label: 'Protein'  },
+              { key: 'carbs',    label: 'Carbs'    },
+              { key: 'fat',      label: 'Fat'      }
+            ]" class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+              <p class="text-xs text-gray-400 mb-1.5">{{ m.label }}</p>
+              <div class="flex items-center justify-between">
+                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
+                      [ngClass]="trendColors[trend.macroTrends[m.key].trend]">
+                  {{ trendIcon(trend.macroTrends[m.key].trend) }} {{ trend.macroTrends[m.key].trend | titlecase }}
+                </span>
+                <span class="text-xs text-gray-400">avg {{ trend.macroTrends[m.key].weekAvg }}%</span>
+              </div>
+              <p class="mt-1 text-xs" [ngClass]="trend.macroTrends[m.key].slope >= 0 ? 'text-success-600 dark:text-success-400' : 'text-error-600 dark:text-error-400'">
+                {{ trend.macroTrends[m.key].slope > 0 ? '+' : '' }}{{ trend.macroTrends[m.key].slope }}%/day
+              </p>
+            </div>
+          </div>
+
+          <!-- ✅ New: clinical patterns detected -->
+          <div *ngIf="trend.patterns.length"
+               class="mb-6 rounded-xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-500/20 dark:bg-brand-500/10">
+            <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-400">Clinical Patterns Detected</p>
+            <ul class="space-y-1.5">
+              <li *ngFor="let p of trend.patterns"
+                  class="flex items-start gap-2 text-xs text-brand-700 dark:text-brand-400">
+                <svg class="mt-0.5 h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                {{ p }}
+              </li>
+            </ul>
+          </div>
+
+          <!-- ✅ New: days-until-critical countdown (DECLINING only) -->
+          <div *ngIf="trend.estimatedDaysUntilCritical"
+               class="mb-6 flex items-center gap-3 rounded-xl border border-error-200 bg-error-50 px-5 py-3
+                      dark:border-error-500/20 dark:bg-error-500/10">
+            <svg class="h-5 w-5 flex-shrink-0 text-error-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p class="text-sm text-error-700 dark:text-error-400">
+              At the current rate, the composite score is projected to reach the critical threshold in
+              <span class="font-bold">{{ trend.estimatedDaysUntilCritical }} day{{ trend.estimatedDaysUntilCritical !== 1 ? 's' : '' }}</span>.
+              Immediate clinical review recommended.
+            </p>
+          </div>
+
+          <!-- Day-by-day table -->
+          <div class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-white/[0.03]">
+            <div class="border-b border-gray-100 px-6 py-4 dark:border-gray-800"><h3 class="text-base font-semibold text-gray-800 dark:text-white/90">Day-by-day breakdown</h3></div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-theme-sm">
+                <thead>
+                  <tr class="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/60">
+                    <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Date</th>
+                    <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Calories</th>
+                    <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Protein</th>
+                    <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Carbs</th>
+                    <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Fat</th>
+                    <!-- ✅ Fixed: was overallAchievement — now weightedComposite -->
+                    <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Composite</th>
+                    <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Bar</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                  <tr *ngFor="let p of trend.points" class="transition hover:bg-gray-50/60 dark:hover:bg-white/[0.02]">
+                    <td class="px-5 py-4 font-medium text-gray-800 dark:text-white/90 whitespace-nowrap">{{ p.date }}</td>
+                    <td class="px-5 py-4 text-gray-700 dark:text-gray-300">{{ p.calories }} kcal</td>
+                    <td class="px-5 py-4 text-gray-700 dark:text-gray-300">{{ p.proteinG }} g</td>
+                    <td class="px-5 py-4 text-gray-700 dark:text-gray-300">{{ p.carbsG }} g</td>
+                    <td class="px-5 py-4 text-gray-700 dark:text-gray-300">{{ p.fatG }} g</td>
+                    <!-- ✅ Fixed: was p.overallAchievement — now p.weightedComposite -->
+                    <td class="px-5 py-4 font-semibold" [ngClass]="achievementColor(p.weightedComposite)">{{ p.weightedComposite }}%</td>
+                    <td class="px-5 py-4">
+                      <div class="h-1.5 w-24 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                        <!-- ✅ Fixed: was p.overallAchievement — now p.weightedComposite -->
+                        <div class="h-full rounded-full" [ngClass]="barColor(p.weightedComposite)" [style.width]="barWidth(p.weightedComposite)"></div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+
+      <!-- ── MEAL LOG ── -->
+      <div *ngIf="activeTab === 'meals'">
+        <div *ngIf="showMealForm" class="mb-6 rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <div class="flex items-center gap-3 border-b border-gray-100 px-6 py-5 dark:border-gray-800">
+            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-500/[0.12]">
+              <svg class="h-5 w-5 text-brand-500 dark:text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            </span>
+            <h2 class="text-lg font-semibold text-gray-800 dark:text-white/90">Log a Meal</h2>
+          </div>
+          <div class="p-6">
+            <form [formGroup]="mealForm" (ngSubmit)="saveMeal()">
+              <div class="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div>
+                  <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Meal Type <span class="text-error-500">*</span></label>
+                  <select formControlName="mealType" [ngClass]="mealFieldError('mealType','required') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                          class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 outline-none transition appearance-none focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:bg-gray-900 dark:text-white/90">
+                    <option value="">Select type</option>
+                    <option *ngFor="let t of mealTypes" [value]="t.value">{{ t.label }}</option>
+                  </select>
+                  <p *ngIf="mealFieldError('mealType','required')" class="mt-1 text-xs text-error-600">Required</p>
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Recorded at <span class="text-error-500">*</span></label>
+                  <input type="datetime-local" formControlName="recordedAt" [max]="todayIso"
+                         [ngClass]="mealFieldError('recordedAt','required') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                         class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:bg-gray-900 dark:text-white/90"/>
+                  <p *ngIf="mealFieldError('recordedAt','required')" class="mt-1 text-xs text-error-600">Required</p>
+                </div>
+              </div>
+              <div class="mb-5 grid grid-cols-2 gap-5 sm:grid-cols-4">
+                <div *ngFor="let f of [
+                  { ctrl: 'calories', label: 'Calories', unit: 'kcal', min: 0, max: 3000 },
+                  { ctrl: 'proteinG', label: 'Protein',  unit: 'g',    min: 0, max: 400  },
+                  { ctrl: 'carbsG',   label: 'Carbs',    unit: 'g',    min: 0, max: 600  },
+                  { ctrl: 'fatG',     label: 'Fat',       unit: 'g',    min: 0, max: 200  }
+                ]">
+                  <div>
+                    <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">{{ f.label }} <span class="text-error-500">*</span> <span class="ml-1 text-xs font-normal text-gray-400">({{ f.unit }})</span></label>
+                    <input type="number" [formControlName]="f.ctrl" [min]="f.min" [max]="f.max"
+                           [ngClass]="mealFieldError(f.ctrl,'required')||mealFieldError(f.ctrl,'min')||mealFieldError(f.ctrl,'max') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                           class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:bg-gray-900 dark:text-white/90"/>
+                    <p *ngIf="mealFieldError(f.ctrl,'required')" class="mt-1 text-xs text-error-600">Required</p>
+                    <p *ngIf="mealFieldError(f.ctrl,'min')||mealFieldError(f.ctrl,'max')" class="mt-1 text-xs text-error-600">{{ f.min }}–{{ f.max }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
+                <div>
+                  <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Consumption <span class="text-error-500">*</span> <span class="ml-1 text-xs font-normal text-gray-400">(0–100)</span></label>
+                  <input type="number" formControlName="consumptionPercent" min="0" max="100"
+                         [ngClass]="mealFieldError('consumptionPercent','min')||mealFieldError('consumptionPercent','max') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                         class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:bg-gray-900 dark:text-white/90"/>
+                  <p *ngIf="mealFieldError('consumptionPercent','min')||mealFieldError('consumptionPercent','max')" class="mt-1 text-xs text-error-600">0–100%</p>
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Notes</label>
+                  <input type="text" formControlName="notes" placeholder="Optional notes..." class="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-theme-sm placeholder-gray-400 outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"/>
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Recorded By</label>
+                  <div class="flex items-center gap-2.5 rounded-xl border border-gray-200 bg-gray-100 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-800">
+                    <div class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-500 text-xs font-bold text-white">{{ currentUserName | slice:0:1 }}</div>
+                    <span class="text-theme-sm font-semibold text-gray-800 dark:text-white/90">{{ currentUserName }}</span>
+                    <svg class="ml-auto h-4 w-4 flex-shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                  </div>
+                </div>
+              </div>
+              <p *ngIf="mealError" class="mb-3 text-xs text-error-600">{{ mealError }}</p>
+              <div class="flex items-center gap-3">
+                <button type="submit" [disabled]="savingMeal" class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-2.5 text-theme-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-500/20 disabled:opacity-60">
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                  {{ savingMeal ? 'Saving…' : 'Log Meal' }}
+                </button>
+                <button type="button" (click)="cancelMeal()" class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-2.5 text-theme-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <div class="flex flex-col gap-4 border-b border-gray-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800">
+            <div class="flex items-center gap-3">
+              <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-500/[0.12]">
+                <svg class="h-5 w-5 text-brand-500 dark:text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+              </span>
+              <div>
+                <h2 class="text-lg font-semibold text-gray-800 dark:text-white/90">Meal Log</h2>
+                <p class="mt-0.5 text-xs text-gray-400">{{ meals.length }} record{{ meals.length !== 1 ? 's' : '' }}</p>
+              </div>
+            </div>
+            <button *ngIf="!showMealForm" (click)="openMealForm()" class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-2 text-xs font-medium text-white shadow-theme-xs transition hover:bg-brand-600 whitespace-nowrap">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+              Log Meal
+            </button>
+          </div>
+          <div *ngIf="loadingMeals" class="p-6 space-y-3">
+            <div *ngFor="let i of [1,2,3]" class="h-12 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800"></div>
+          </div>
+          <div *ngIf="!loadingMeals" class="overflow-x-auto">
+            <table class="w-full text-left text-theme-sm" *ngIf="meals.length > 0">
+              <thead>
+                <tr class="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/60">
+                  <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Type</th>
+                  <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Recorded at</th>
+                  <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Calories</th>
+                  <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Protein</th>
+                  <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Carbs</th>
+                  <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Fat</th>
+                  <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Consumed</th>
+                  <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Notes</th>
+                  <th class="px-5 py-3.5 text-center font-medium text-gray-500 whitespace-nowrap dark:text-gray-400">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                <tr *ngFor="let m of meals" class="transition hover:bg-gray-50/60 dark:hover:bg-white/[0.02]">
+                  <td class="px-5 py-4"><span class="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-400">{{ mealTypeLabel(m.mealType) }}</span></td>
+                  <td class="px-5 py-4 text-gray-500 whitespace-nowrap dark:text-gray-400">{{ m.recordedAt | date:'yyyy-MM-dd HH:mm' }}</td>
+                  <td class="px-5 py-4 text-gray-700 dark:text-gray-300">{{ m.calories }} kcal</td>
+                  <td class="px-5 py-4 text-gray-700 dark:text-gray-300">{{ m.proteinG }} g</td>
+                  <td class="px-5 py-4 text-gray-700 dark:text-gray-300">{{ m.carbsG }} g</td>
+                  <td class="px-5 py-4 text-gray-700 dark:text-gray-300">{{ m.fatG }} g</td>
+                  <td class="px-5 py-4">
+                    <div class="flex items-center gap-2">
+                      <div class="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700"><div class="h-full rounded-full" [ngClass]="consumptionBarColor(m.consumptionPercent)" [style.width]="m.consumptionPercent + '%'"></div></div>
+                      <span class="text-xs font-medium" [ngClass]="achievementColor(m.consumptionPercent)">{{ m.consumptionPercent }}%</span>
+                    </div>
+                  </td>
+                  <td class="px-5 py-4 text-gray-500 dark:text-gray-400 max-w-[160px] truncate" [title]="m.notes || ''">{{ m.notes || '—' }}</td>
+                  <td class="px-5 py-4 text-center">
+                    <button (click)="deleteMeal(m.id)" class="inline-flex items-center gap-1.5 rounded-lg border border-error-100 bg-error-50 px-3 py-1.5 text-xs font-medium text-error-600 shadow-theme-xs transition hover:bg-error-100 dark:border-error-500/20 dark:bg-error-500/10 dark:text-error-400">
+                      <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div *ngIf="meals.length === 0" class="px-5 py-16 text-center">
+              <div class="flex flex-col items-center gap-3">
+                <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-800">
+                  <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                </span>
+                <p class="text-theme-sm font-medium text-gray-500 dark:text-gray-400">No meals logged yet.</p>
+                <button (click)="openMealForm()" class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2 text-xs font-medium text-white transition hover:bg-brand-600">
+                  <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                  Log the first meal
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </ng-container>
+    <!-- ══ END PLAN-REQUIRED TABS ══ -->
+
+    <!-- ══════════════════════════════════════════
+         TAB: PATIENT PROFILE  (no plan required)
+    ══════════════════════════════════════════ -->
+    <div *ngIf="activeTab === 'profile'">
+
+      <div *ngIf="loadingProfile" class="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
+        <div *ngFor="let i of [1,2,3]" class="h-20 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800"></div>
+      </div>
+
+      <div *ngIf="!loadingProfile" class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-white/[0.03]">
+
+        <div class="flex items-center gap-3 border-b border-gray-100 px-6 py-5 dark:border-gray-800">
+          <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-500/[0.12]">
+            <svg class="h-5 w-5 text-brand-500 dark:text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+          </span>
+          <div class="flex-1">
+            <h2 class="text-lg font-semibold text-gray-800 dark:text-white/90">Patient Nutrition Profile</h2>
+            <p class="mt-0.5 text-xs text-gray-400">
+              <span *ngIf="patientFullName" class="font-medium text-gray-600 dark:text-gray-300">{{ patientFullName }}</span>
+              <ng-container *ngIf="patientFullName"> · </ng-container>
+              {{ profile ? 'Edit clinical data for precise macro targets.' : 'No profile yet. Fill in the form to enable auto-calculation.' }}
+            </p>
+          </div>
+          <div *ngIf="bmi" class="flex flex-col items-end">
+            <span class="text-2xl font-bold" [ngClass]="bmiColor">{{ bmi }}</span>
+            <span class="text-xs font-medium" [ngClass]="bmiColor">BMI · {{ bmiCategory }}</span>
+          </div>
+        </div>
+
+        <div class="p-6">
+
+          <div *ngIf="profileSuccess"
+               class="mb-5 flex items-center gap-2 rounded-xl border border-success-200 bg-success-50 px-4 py-3 text-sm text-success-700 dark:border-success-500/20 dark:bg-success-500/10 dark:text-success-400">
+            <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            {{ profileSuccess }}
+          </div>
+          <div *ngIf="profileError" class="mb-5 rounded-xl border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-600 dark:border-error-500/20 dark:bg-error-500/10 dark:text-error-400">
+            {{ profileError }}
+          </div>
+
+          <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+
+            <div class="mb-5">
+              <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Identity</p>
+              <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
+                <div class="sm:col-span-2">
+                  <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Full Name <span class="text-error-500">*</span></label>
+                  <input type="text" formControlName="fullName" placeholder="Patient full name"
+                         [ngClass]="profileFieldError('fullName','required') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                         class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:bg-gray-900 dark:text-white/90"/>
+                  <p *ngIf="profileFieldError('fullName','required')" class="mt-1 text-xs text-error-600">Required</p>
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Age <span class="text-error-500">*</span></label>
+                  <input type="number" formControlName="age" min="0" max="130" placeholder="e.g. 45"
+                         [ngClass]="profileFieldError('age','required')||profileFieldError('age','min')||profileFieldError('age','max') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                         class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:bg-gray-900 dark:text-white/90"/>
+                  <p *ngIf="profileFieldError('age','required')" class="mt-1 text-xs text-error-600">Required</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-5">
+              <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Anthropometrics</p>
+              <div class="grid grid-cols-2 gap-5 sm:grid-cols-4">
+                <div class="col-span-2">
+                  <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Gender <span class="text-error-500">*</span></label>
+                  <div class="flex gap-2">
+                    <button *ngFor="let g of genderOptions" type="button"
+                            (click)="profileForm.get('gender')?.setValue(g.value)"
+                            class="flex-1 rounded-lg border py-2 text-xs font-medium transition-all"
+                            [ngClass]="profileForm.get('gender')?.value === g.value
+                              ? 'border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-500 dark:bg-brand-500/10 dark:text-brand-300'
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-brand-300 dark:border-gray-700 dark:bg-white/[0.03] dark:text-gray-400'">
+                      {{ g.label }}
+                    </button>
+                  </div>
+                  <p *ngIf="profileFieldError('gender','required')" class="mt-1 text-xs text-error-600">Required</p>
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Weight <span class="text-error-500">*</span> <span class="text-xs font-normal text-gray-400">(kg)</span></label>
+                  <input type="number" formControlName="weightKg" min="1" max="500" step="0.1" placeholder="e.g. 72"
+                         [ngClass]="profileFieldError('weightKg','required')||profileFieldError('weightKg','min')||profileFieldError('weightKg','max') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                         class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:bg-gray-900 dark:text-white/90"/>
+                  <p *ngIf="profileFieldError('weightKg','required')" class="mt-1 text-xs text-error-600">Required</p>
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Height <span class="text-error-500">*</span> <span class="text-xs font-normal text-gray-400">(cm)</span></label>
+                  <input type="number" formControlName="heightCm" min="50" max="250" placeholder="e.g. 175"
+                         [ngClass]="profileFieldError('heightCm','required')||profileFieldError('heightCm','min')||profileFieldError('heightCm','max') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                         class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:bg-gray-900 dark:text-white/90"/>
+                  <p *ngIf="profileFieldError('heightCm','required')" class="mt-1 text-xs text-error-600">Required</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-5">
+              <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Kidney Function</p>
+              <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
+                <div>
+                  <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">CKD Stage <span class="text-error-500">*</span> <span class="text-xs font-normal text-gray-400">(1–5)</span></label>
+                  <input type="number" formControlName="ckdStage" min="1" max="5"
+                         [ngClass]="profileFieldError('ckdStage','required')||profileFieldError('ckdStage','min')||profileFieldError('ckdStage','max') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                         class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:bg-gray-900 dark:text-white/90"/>
+                  <p *ngIf="profileFieldError('ckdStage','required')" class="mt-1 text-xs text-error-600">Required</p>
+                  <p *ngIf="profileFieldError('ckdStage','min')||profileFieldError('ckdStage','max')" class="mt-1 text-xs text-error-600">Must be 1–5</p>
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">GFR <span class="text-error-500">*</span> <span class="text-xs font-normal text-gray-400">(mL/min)</span></label>
+                  <input type="number" formControlName="gfr" min="0" max="200" step="0.1"
+                         [ngClass]="profileFieldError('gfr','required')||profileFieldError('gfr','min') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                         class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:bg-gray-900 dark:text-white/90"/>
+                  <p *ngIf="profileFieldError('gfr','required')" class="mt-1 text-xs text-error-600">Required</p>
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Creatinine <span class="text-error-500">*</span> <span class="text-xs font-normal text-gray-400">(mg/dL)</span></label>
+                  <input type="number" formControlName="creatinineLevel" min="0" max="50" step="0.01"
+                         [ngClass]="profileFieldError('creatinineLevel','required')||profileFieldError('creatinineLevel','min') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                         class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:bg-gray-900 dark:text-white/90"/>
+                  <p *ngIf="profileFieldError('creatinineLevel','required')" class="mt-1 text-xs text-error-600">Required</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-5">
+              <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Comorbidities</p>
+              <div class="flex flex-wrap gap-3">
+                <label class="flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-all"
+                       [ngClass]="profileForm.get('diabetic')?.value
+                         ? 'border-warning-400 bg-warning-50 dark:border-warning-500/40 dark:bg-warning-500/10'
+                         : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-white/[0.03]'">
+                  <input type="checkbox" formControlName="diabetic" class="h-4 w-4 rounded accent-warning-500"/>
+                  <div>
+                    <p class="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Diabetic</p>
+                    <p class="text-xs text-gray-400">Reduces carb % target to 40%</p>
+                  </div>
+                </label>
+                <label class="flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-all"
+                       [ngClass]="profileForm.get('hypertensive')?.value
+                         ? 'border-error-400 bg-error-50 dark:border-error-500/40 dark:bg-error-500/10'
+                         : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-white/[0.03]'">
+                  <input type="checkbox" formControlName="hypertensive" class="h-4 w-4 rounded accent-error-500"/>
+                  <div>
+                    <p class="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Hypertensive</p>
+                    <p class="text-xs text-gray-400">Caps fat at 50 g/day</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div class="mb-7">
+              <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Activity Level <span class="text-error-500">*</span></p>
+              <div class="flex flex-wrap gap-2">
+                <button *ngFor="let a of activityOptions" type="button"
+                        (click)="profileForm.get('activityLevel')?.setValue(a.value)"
+                        class="flex flex-col items-start rounded-xl border px-4 py-2.5 text-left transition-all"
+                        [ngClass]="profileForm.get('activityLevel')?.value === a.value
+                          ? 'border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-500 dark:bg-brand-500/10 dark:text-brand-300'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-brand-300 dark:border-gray-700 dark:bg-white/[0.03] dark:text-gray-400'">
+                  <span class="text-xs font-semibold">{{ a.label }}</span>
+                  <span class="text-[10px] text-gray-400 mt-0.5">{{ a.hint }}</span>
+                </button>
+              </div>
+              <p *ngIf="profileFieldError('activityLevel','required')" class="mt-1.5 text-xs text-error-600">Please select an activity level</p>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <button type="submit" [disabled]="savingProfile"
+                      class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-2.5 text-theme-sm font-medium text-white
+                             shadow-theme-xs transition hover:bg-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-500/20 disabled:opacity-60">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                {{ savingProfile ? 'Saving…' : (profile ? 'Update Profile' : 'Create Profile') }}
+              </button>
+              <button *ngIf="profile && !plan" type="button" (click)="setTab('summary'); suggestPlan()"
+                      class="inline-flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-6 py-2.5 text-theme-sm font-medium text-brand-700
+                             shadow-theme-xs transition hover:bg-brand-100 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-300">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                Generate Diet Plan Now
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

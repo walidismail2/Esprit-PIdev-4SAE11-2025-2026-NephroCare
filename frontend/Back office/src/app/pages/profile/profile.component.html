@@ -1,0 +1,170 @@
+<app-page-breadcrumb pageTitle="Profile" />
+
+<div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6">
+  <div *ngIf="loading" class="py-10 text-center">
+    <p class="text-sm text-gray-500 dark:text-gray-400">Loading profile...</p>
+  </div>
+
+  <div *ngIf="!loading && profile" class="space-y-6">
+    <section class="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700">
+      <div class="bg-gradient-to-r from-brand-600 via-sky-600 to-cyan-600 p-6 text-white">
+        <div class="flex flex-wrap items-center gap-4">
+          <div class="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 text-xl font-bold backdrop-blur">
+            {{ initials }}
+          </div>
+          <div class="flex-1">
+            <h3 class="text-xl font-semibold">{{ fullName }}</h3>
+            <p class="mt-1 text-sm text-white/85">{{ profile.email || 'No email' }}</p>
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+              <span class="rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold backdrop-blur">
+                {{ primaryRole }}
+              </span>
+              <span
+                class="rounded-full px-2.5 py-1 text-xs font-semibold"
+                [ngClass]="emailVerified
+                  ? 'bg-emerald-200 text-emerald-800'
+                  : 'bg-amber-200 text-amber-800'">
+                {{ emailVerified ? 'Email Verified' : 'Email Not Verified' }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 gap-3 bg-gray-50 p-4 dark:bg-gray-900 sm:grid-cols-3">
+        <div class="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800/40">
+          <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Username</p>
+          <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ profile.username || '-' }}</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800/40">
+          <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Session Role</p>
+          <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ primaryRole }}</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800/40">
+          <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Email Status</p>
+          <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ emailVerified ? 'Verified' : 'Unverified' }}</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="rounded-2xl border border-gray-200 p-2 dark:border-gray-700">
+      <div class="flex flex-wrap gap-2">
+        <button
+          type="button"
+          (click)="activeTab = 'info'"
+          class="rounded-xl px-4 py-2 text-sm font-semibold transition"
+          [ngClass]="activeTab === 'info'
+            ? 'bg-brand-600 text-white shadow-theme-xs'
+            : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800'">
+          My Information
+        </button>
+        <button
+          type="button"
+          (click)="activeTab = 'password'"
+          class="rounded-xl px-4 py-2 text-sm font-semibold transition"
+          [ngClass]="activeTab === 'password'
+            ? 'bg-brand-600 text-white shadow-theme-xs'
+            : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800'">
+          Change Password
+        </button>
+        <button
+          type="button"
+          (click)="activeTab = 'security'"
+          class="rounded-xl px-4 py-2 text-sm font-semibold transition"
+          [ngClass]="activeTab === 'security'
+            ? 'bg-brand-600 text-white shadow-theme-xs'
+            : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800'">
+          Security
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="activeTab === 'info'" class="rounded-2xl border border-gray-200 p-5 dark:border-gray-700">
+      <h4 class="mb-4 text-base font-semibold text-gray-900 dark:text-white">Account Details</h4>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div class="rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+          <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">First Name</p>
+          <p class="mt-1 text-sm font-medium text-gray-900 dark:text-white">{{ profile.firstName || '-' }}</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+          <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Last Name</p>
+          <p class="mt-1 text-sm font-medium text-gray-900 dark:text-white">{{ profile.lastName || '-' }}</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+          <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Username</p>
+          <p class="mt-1 text-sm font-medium text-gray-900 dark:text-white">{{ profile.username || '-' }}</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+          <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Email</p>
+          <p class="mt-1 text-sm font-medium text-gray-900 dark:text-white">{{ profile.email || '-' }}</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 p-3 dark:border-gray-700 md:col-span-2">
+          <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">User ID</p>
+          <p class="mt-1 break-all text-sm font-medium text-gray-900 dark:text-white">{{ profile.id || '-' }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="activeTab === 'password'" class="rounded-2xl border border-gray-200 p-5 dark:border-gray-700">
+      <h4 class="mb-2 text-base font-semibold text-gray-900 dark:text-white">Change Password</h4>
+      <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+        Password updates are handled by Keycloak for secure verification and audit.
+      </p>
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <button
+          type="button"
+          (click)="openPasswordChange()"
+          class="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
+          Open Password Change
+        </button>
+        <a
+          [href]="keycloakAccountUrl"
+          target="_blank"
+          rel="noopener"
+          class="rounded-xl border border-gray-300 px-4 py-2.5 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">
+          Open Account Console
+        </a>
+      </div>
+    </div>
+
+    <div *ngIf="activeTab === 'security'" class="rounded-2xl border border-gray-200 p-5 dark:border-gray-700">
+      <h4 class="mb-2 text-base font-semibold text-gray-900 dark:text-white">Security & Verification</h4>
+      <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+        Send verification email if your account email is not verified.
+      </p>
+
+      <div *ngIf="verifyMsg" class="mb-4 rounded-lg px-3 py-2 text-sm"
+        [ngClass]="verifyMsg.type === 'success'
+          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+          : 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300'">
+        <div class="flex items-center justify-between gap-3">
+          <span>{{ verifyMsg.text }}</span>
+          <button type="button" (click)="dismissVerifyMsg()" class="text-xs font-semibold">Close</button>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="rounded-full px-2.5 py-1 text-xs font-semibold"
+            [ngClass]="emailVerified
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+              : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'">
+            {{ emailVerified ? 'Verified' : 'Unverified' }}
+          </span>
+
+          <button
+            *ngIf="!emailVerified"
+            type="button"
+            (click)="sendVerificationEmail()"
+            [disabled]="sendingVerify"
+            class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60">
+            {{ sendingVerify ? 'Sending...' : 'Send Verification Email' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && !profile" class="rounded-lg bg-red-50 p-4 text-sm text-red-700 dark:bg-red-500/15 dark:text-red-300">
+    Unable to load profile details.
+  </div>
+</div>

@@ -1,0 +1,364 @@
+<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white pt-4 dark:border-white/[0.05] dark:bg-white/[0.03]">
+
+    @if (errorMessage) {
+        <div class="px-6 mb-4">
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                <strong class="font-bold">Error!</strong>
+                <span class="block sm:inline">{{ errorMessage }}</span>
+            </div>
+        </div>
+    }
+
+    <div class="flex flex-col gap-3 px-6 mb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Treatments</h3>
+        </div>
+
+        <div class="flex gap-2">
+            @if (isAdmin) {
+                <app-button size="md" variant="outline" (btnClick)="goToAuditLogs()">Audit Logs</app-button>
+            }
+
+            @if (isDoctor) {
+                <app-button size="md" variant="primary" (btnClick)="openAddModal()">+ New Prescription</app-button>
+            }
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="px-6 mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex flex-wrap gap-2 items-center">
+            <label class="text-sm text-gray-600 dark:text-gray-300">Status:</label>
+            <select [(ngModel)]="statusFilter" class="rounded border border-gray-300 px-3 py-2 text-sm dark:bg-gray-800">
+                <option value="ALL">All</option>
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="SUSPENDED">SUSPENDED</option>
+                <option value="ARCHIVED">ARCHIVED</option>
+            </select>
+
+            @if (isDoctor) {
+                <label class="ml-2 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                    <input type="checkbox" [(ngModel)]="lowKtVOnly" />
+                    Low Kt/V only (&lt; 1.2)
+                </label>
+            }
+        </div>
+
+        <div class="flex gap-2 items-center">
+            <label class="text-sm text-gray-600 dark:text-gray-300">Search:</label>
+            <input [(ngModel)]="searchText"
+                   placeholder="patient name"
+                   class="rounded border border-gray-300 px-3 py-2 text-sm dark:bg-gray-800" />
+        </div>
+    </div>
+
+    @if (loading) {
+        <div class="px-6 pb-6 text-gray-500">Loading...</div>
+    } @else {
+
+        @if (filteredTreatments.length === 0) {
+            <div class="px-6 pb-6">
+                <div class="rounded border border-gray-200 p-6 text-sm text-gray-600 dark:border-white/[0.08] dark:text-gray-300">
+                    No treatments found for current filters.
+                </div>
+            </div>
+        } @else {
+
+            <div class="max-w-full overflow-x-auto">
+                <table class="min-w-full">
+                    <thead class="border-y bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                        <th class="px-6 py-3 text-start">Patient</th>
+                        <th class="px-6 py-3 text-start">Type</th>
+                        <th class="px-6 py-3 text-start">Access</th>
+                        <th class="px-6 py-3 text-start">Freq</th>
+                        <th class="px-6 py-3 text-start">Duration</th>
+                        <th class="px-6 py-3 text-start">Next Session</th>
+
+                        @if (isDoctor || isNurse) {
+                            <th class="px-6 py-3 text-start">Avg Kt/V</th>
+                            <th class="px-6 py-3 text-start">Compliance</th>
+                            <th class="px-6 py-3 text-start">Trend</th>
+                        }
+
+                        <th class="px-6 py-3 text-start">Status</th>
+                        <th class="px-6 py-3 text-start">Actions</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                        @for (treatment of filteredTreatments; track treatment.id) {
+                            <tr class="border-b dark:border-white/[0.05]">
+                                <td class="px-6 py-4">
+                                    <span class="text-theme-sm font-medium">{{ treatment.patientName || 'Patient' }}</span>
+                                </td>
+
+                                <td class="px-6 py-4">{{ treatment.dialysisType }}</td>
+                                <td class="px-6 py-4">{{ treatment.vascularAccessType }}</td>
+
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-2">
+                                        <span>{{ treatment.frequencyPerWeek }}/wk</span>
+
+                                        @if (isNurse) {
+                                            <app-badge variant="light" size="sm" [color]="frequencyBadgeColor(treatment)">
+                                                {{ frequencyBadgeText(treatment) }}
+                                            </app-badge>
+                                        }
+                                    </div>
+                                </td>
+
+                                <td class="px-6 py-4">{{ treatment.prescribedDurationMinutes }} min</td>
+
+                                <td class="px-6 py-4">
+                                    @if (nextSessionDateIso(treatment)) {
+                                        <span class="text-sm text-gray-700 dark:text-gray-200">
+                    {{ nextSessionDateIso(treatment) | date:'mediumDate' }}
+                  </span>
+                                    } @else {
+                                        <span class="text-sm text-gray-500">-</span>
+                                    }
+                                </td>
+
+                                @if (isDoctor || isNurse) {
+                                    <td class="px-6 py-4">
+                                        <app-badge variant="light" size="sm" [color]="ktvColor(treatment)">
+                                            {{ (metrics[treatment.id]?.avgKtV ?? '-') }}
+                                        </app-badge>
+                                    </td>
+
+                                    <td class="px-6 py-4">
+                                        <app-badge variant="light" size="sm" [color]="complianceColor(treatment)">
+                                            {{ complianceLabel(treatment) }}
+                                        </app-badge>
+                                    </td>
+
+                                    <td class="px-6 py-4">
+                                        <app-badge variant="light" size="sm" [color]="trendColor(treatment)">
+                                            {{ trendIcon(treatment) }}
+                                        </app-badge>
+                                    </td>
+                                }
+
+                                <td class="px-6 py-4">
+                                    <app-badge variant="light" size="sm" [color]="getBadgeColor(treatment.status)">
+                                        {{ treatment.status }}
+                                    </app-badge>
+                                </td>
+
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-wrap gap-2">
+                                        <app-button size="sm" variant="outline" (btnClick)="viewSessions(treatment.id)">
+                                            Sessions
+                                        </app-button>
+
+                                        @if (isNurse) {
+                                            <app-button size="sm" variant="primary"
+                                                        [disabled]="!canStartSession(treatment)"
+                                                        (btnClick)="viewSessions(treatment.id)">
+                                                Start Session
+                                            </app-button>
+                                        }
+
+                                        @if (isDoctor) {
+                                            <app-button size="sm" variant="primary"
+                                                        (btnClick)="openEditModal(treatment)"
+                                                        [disabled]="!canEdit(treatment.status)">
+                                                Edit
+                                            </app-button>
+
+                                            <app-button size="sm" variant="outline"
+                                                        (btnClick)="suspendTreatment(treatment)"
+                                                        [disabled]="!canSuspend(treatment.status)">
+                                                Suspend
+                                            </app-button>
+
+                                            <app-button size="sm" variant="outline"
+                                                        (btnClick)="archiveTreatment(treatment)"
+                                                        [disabled]="!canArchive(treatment.status)">
+                                                Archive
+                                            </app-button>
+                                        }
+
+                                        @if (isAdmin) {
+                                            <app-button size="sm" variant="outline" (btnClick)="deleteTreatment(treatment)">
+                                                <span class="text-red-600">Delete</span>
+                                            </app-button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>
+
+<!-- Doctor Add/Edit Modal -->
+<app-modal
+        [open]="isModalOpen && isDoctor"
+        [title]="modalMode === 'add' ? 'New Prescription' : 'Update Treatment'"
+        width="md"
+        [closable]="true"
+        [busy]="submitting"
+        (closed)="closeModal()"
+>
+    @if (modalError) {
+        <div class="mb-4 rounded border border-red-300 bg-red-50 px-4 py-3 text-red-700">
+            <strong>Error!</strong> {{ modalError }}
+        </div>
+    }
+
+    @if (modalMode === 'add' && conflictActiveTreatment) {
+        <div class="mb-4 rounded border border-yellow-300 bg-yellow-50 px-4 py-3 text-yellow-800">
+            <p class="font-semibold">Patient already has an ACTIVE treatment.</p>
+            <p class="text-sm">Archive it first before creating a new prescription.</p>
+            <div class="mt-3 flex gap-2">
+                <app-button size="sm" variant="outline" (btnClick)="archiveConflictingTreatment()" [disabled]="submitting">
+                    Archive Active Treatment
+                </app-button>
+            </div>
+        </div>
+    }
+
+    <form (ngSubmit)="onSubmit()" class="grid grid-cols-1 gap-4 md:grid-cols-2" novalidate>
+        @if (modalMode === 'add') {
+            <div class="relative md:col-span-2">
+                <label class="block text-sm font-medium mb-1">
+                    Select Patient <span class="text-red-500">*</span>
+                </label>
+
+                <input
+                        type="text"
+                        [(ngModel)]="searchPatientText"
+                        (input)="onPatientSearchInput()"
+                        [placeholder]="patientsLoading ? 'Loading patients...' : (selectedPatientName || 'Type to search...')"
+                        name="patientSearch"
+                        class="w-full rounded border border-gray-300 px-3 py-2 dark:bg-gray-800"
+                        [disabled]="patientsLoading"
+                        required
+                        #patientSearchCtrl="ngModel"
+                />
+
+                @if ((patientSearchCtrl.invalid || isPatientSelectionMissing()) && (patientSearchCtrl.touched || modalAttempted)) {
+                    <p class="mt-1 text-sm text-red-600">Select a patient from the list.</p>
+                }
+
+                @if (!patientsLoading && filteredPatients.length > 0) {
+                    <div class="absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg max-h-40 overflow-auto dark:bg-gray-800">
+                        @for (p of filteredPatients; track p.id) {
+                            <div (click)="selectPatient(p)"
+                                 class="px-3 py-2 hover:bg-gray-100 cursor-pointer dark:hover:bg-gray-700">
+                                {{ p.fullName }} @if (p.email) { <span class="text-xs text-gray-500">- {{ p.email }}</span> }
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (!patientsLoading && searchPatientText && filteredPatients.length === 0) {
+                    <p class="mt-1 text-sm text-gray-500">No patients found.</p>
+                }
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium mb-1">Start Date <span class="text-red-500">*</span></label>
+                <input
+                        type="date"
+                        [(ngModel)]="formData.startDate"
+                        name="startDate"
+                        required
+                        [attr.min]="todayStr"
+                        #startDateCtrl="ngModel"
+                        class="w-full rounded border border-gray-300 px-3 py-2 dark:bg-gray-800"
+                />
+                @if (startDateCtrl.invalid && (startDateCtrl.touched || modalAttempted)) {
+                    <p class="mt-1 text-sm text-red-600">Start date is required.</p>
+                }
+                @if (!startDateCtrl.errors?.['required'] && isStartDateInPast() && (startDateCtrl.touched || modalAttempted)) {
+                    <p class="mt-1 text-sm text-red-600">Start date cannot be in the past.</p>
+                }
+            </div>
+        }
+
+        <div>
+            <label class="block text-sm font-medium mb-1">Dialysis Type <span class="text-red-500">*</span></label>
+            <select [(ngModel)]="formData.dialysisType" name="dialysisType" required #dialysisTypeCtrl="ngModel"
+                    class="w-full rounded border border-gray-300 px-3 py-2 dark:bg-gray-800">
+                <option value="HEMODIALYSIS">Hemodialysis</option>
+                <option value="PERITONEAL">Peritoneal</option>
+            </select>
+            @if (dialysisTypeCtrl.invalid && (dialysisTypeCtrl.touched || modalAttempted)) {
+                <p class="mt-1 text-sm text-red-600">Dialysis type is required.</p>
+            }
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium mb-1">Vascular Access <span class="text-red-500">*</span></label>
+            <select [(ngModel)]="formData.vascularAccessType" name="vascularAccessType" required #vascularAccessCtrl="ngModel"
+                    class="w-full rounded border border-gray-300 px-3 py-2 dark:bg-gray-800">
+                <option value="AV_FISTULA">AV Fistula</option>
+                <option value="GRAFT">Graft</option>
+                <option value="CATHETER">Catheter</option>
+            </select>
+            @if (vascularAccessCtrl.invalid && (vascularAccessCtrl.touched || modalAttempted)) {
+                <p class="mt-1 text-sm text-red-600">Vascular access is required.</p>
+            }
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium mb-1">Frequency (per week) <span class="text-red-500">*</span></label>
+            <input type="number" [(ngModel)]="formData.frequencyPerWeek" name="frequencyPerWeek"
+                   required min="1" max="7" #frequencyCtrl="ngModel"
+                   class="w-full rounded border border-gray-300 px-3 py-2 dark:bg-gray-800" />
+            @if (frequencyCtrl.invalid && (frequencyCtrl.touched || modalAttempted)) {
+                <div class="mt-1 text-sm text-red-600">
+                    @if (frequencyCtrl.errors?.['required']) { <p>Frequency is required.</p> }
+                    @if (frequencyCtrl.errors?.['min']) { <p>Minimum is 1 session per week.</p> }
+                    @if (frequencyCtrl.errors?.['max']) { <p>Maximum is 7 sessions per week.</p> }
+                </div>
+            }
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium mb-1">Duration (minutes) <span class="text-red-500">*</span></label>
+            <input type="number" [(ngModel)]="formData.prescribedDurationMinutes" name="prescribedDurationMinutes"
+                   required min="30" max="600" #durationCtrl="ngModel"
+                   class="w-full rounded border border-gray-300 px-3 py-2 dark:bg-gray-800" />
+            @if (durationCtrl.invalid && (durationCtrl.touched || modalAttempted)) {
+                <div class="mt-1 text-sm text-red-600">
+                    @if (durationCtrl.errors?.['required']) { <p>Duration is required.</p> }
+                    @if (durationCtrl.errors?.['min']) { <p>Minimum is 30 minutes.</p> }
+                    @if (durationCtrl.errors?.['max']) { <p>Maximum is 600 minutes.</p> }
+                </div>
+            }
+        </div>
+
+        <div class="md:col-span-2">
+            <label class="block text-sm font-medium mb-1">Target Dry Weight (kg) <span class="text-red-500">*</span></label>
+            <input type="number" [(ngModel)]="formData.targetDryWeight" name="targetDryWeight"
+                   required min="0.1" max="500" step="0.1" #targetDryWeightCtrl="ngModel"
+                   class="w-full rounded border border-gray-300 px-3 py-2 dark:bg-gray-800" />
+            @if (targetDryWeightCtrl.invalid && (targetDryWeightCtrl.touched || modalAttempted)) {
+                <div class="mt-1 text-sm text-red-600">
+                    @if (targetDryWeightCtrl.errors?.['required']) { <p>Target dry weight is required.</p> }
+                    @if (targetDryWeightCtrl.errors?.['min']) { <p>Minimum is 0.1 kg.</p> }
+                    @if (targetDryWeightCtrl.errors?.['max']) { <p>Maximum is 500 kg.</p> }
+                </div>
+            }
+        </div>
+
+        <div class="md:col-span-2 flex justify-end gap-2 mt-4">
+            <button type="button" (click)="closeModal()" class="rounded border border-gray-300 px-4 py-2" [disabled]="submitting">
+                Cancel
+            </button>
+
+            <button type="submit"
+                    [disabled]="isFormInvalid() || submitting"
+                    class="rounded bg-blue-600 px-4 py-2 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                {{ modalMode === 'add' ? 'Save Prescription' : 'Update' }}
+            </button>
+        </div>
+    </form>
+</app-modal>

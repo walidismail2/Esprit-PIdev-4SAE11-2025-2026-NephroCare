@@ -1,0 +1,468 @@
+<div class="min-h-screen bg-gray-50 px-4 py-8 font-outfit dark:bg-gray-900">
+  <div class="mx-auto max-w-7xl">
+
+    <!-- ══ PAGE HEADER ══ -->
+    <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <p class="mb-1 text-xs font-semibold uppercase tracking-widest text-brand-500">Kidney Clinic Management</p>
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white/90">Building Architecture</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Live bed occupancy · 7-day discharge forecast · Click any room for details</p>
+      </div>
+
+      <!-- Stats pills -->
+      <div class="flex flex-wrap gap-3">
+        <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <div class="text-2xl font-bold text-brand-500">{{ totalBeds }}</div>
+          <div class="mt-0.5 text-xs font-medium uppercase tracking-wide text-gray-400">Total Beds</div>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <div class="text-2xl font-bold text-red-500">{{ occupiedBeds }}</div>
+          <div class="mt-0.5 text-xs font-medium uppercase tracking-wide text-gray-400">Occupied</div>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <div class="text-2xl font-bold text-emerald-500">{{ freeBeds }}</div>
+          <div class="mt-0.5 text-xs font-medium uppercase tracking-wide text-gray-400">Available</div>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <div class="text-2xl font-bold text-amber-500">{{ occupancyPct }}%</div>
+          <div class="mt-0.5 text-xs font-medium uppercase tracking-wide text-gray-400">Occupancy</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ LOADING ══ -->
+    <div *ngIf="loading" class="flex flex-col items-center justify-center gap-3 py-24">
+      <svg class="h-8 w-8 animate-spin text-brand-500" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+      </svg>
+      <span class="text-sm text-gray-400">Loading clinic data…</span>
+    </div>
+
+    <div *ngIf="!loading">
+
+      <!-- ══ CONTROLS ══ -->
+      <div class="mb-6 flex flex-wrap items-center gap-3">
+
+        <!-- View toggle -->
+        <div class="flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <button (click)="setView('floor')"
+                  class="rounded-lg px-4 py-2 text-xs font-semibold transition-all duration-150"
+                  [ngClass]="view==='floor' ? 'bg-brand-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'">
+            🏢 Floor Plan
+          </button>
+          <button (click)="setView('forecast')"
+                  class="rounded-lg px-4 py-2 text-xs font-semibold transition-all duration-150"
+                  [ngClass]="view==='forecast' ? 'bg-brand-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'">
+            📅 7-Day Forecast
+          </button>
+        </div>
+
+        <!-- Wing filter -->
+        <div class="flex gap-2">
+          <button *ngFor="let w of ['ALL','A','B','C']"
+                  (click)="activeWing=w"
+                  class="rounded-lg border px-3 py-2 text-xs font-semibold transition-all duration-150"
+                  [ngClass]="activeWing===w
+                    ? 'border-brand-300 bg-brand-50 text-brand-600 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400'
+                    : 'border-gray-200 bg-white text-gray-500 hover:border-brand-200 hover:text-brand-500 dark:border-gray-700 dark:bg-white/[0.03] dark:text-gray-400'">
+            {{ w === 'ALL' ? 'All Wings' : 'Wing ' + w }}
+          </button>
+        </div>
+
+        <!-- Type legend — driven by typeCfg, no hardcoded types -->
+        <div class="ml-auto flex flex-wrap items-center gap-4">
+          <span *ngFor="let k of typeKeys" class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+            <span class="h-2 w-2 flex-shrink-0 rounded-sm" [style.background]="typeCfg[k].color"></span>
+            {{ typeCfg[k].label }}
+          </span>
+        </div>
+      </div>
+
+      <!-- ════════════════════ FLOOR PLAN ════════════════════ -->
+      <div *ngIf="view==='floor'" class="flex gap-5 items-start">
+
+        <!-- Floor map -->
+        <div class="min-w-0 flex-1 rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+
+          <!-- Card header -->
+          <div class="flex items-center gap-3 border-b border-gray-100 px-6 py-5 dark:border-gray-800">
+            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-500/[0.12]">
+              <svg class="h-5 w-5 text-brand-500 dark:text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M9 7h1m-1 4h1m4-4h1m-1 4h1M9 21v-3a3 3 0 016 0v3"/>
+              </svg>
+            </span>
+            <div>
+              <h2 class="text-lg font-semibold text-gray-800 dark:text-white/90">Floor Plan</h2>
+              <p class="text-xs text-gray-400 mt-0.5">{{ roomCards.length }} rooms · {{ wings.length }} wings</p>
+            </div>
+          </div>
+
+          <div class="p-6">
+            <div *ngFor="let w of wings" class="mb-8 last:mb-0">
+              <ng-container *ngIf="roomsByWing[w].length > 0">
+
+                <!-- Wing header -->
+                <div class="mb-4 flex items-center gap-3">
+                  <div class="flex h-7 w-7 items-center justify-center rounded-lg border border-brand-100 bg-brand-50 text-xs font-bold text-brand-600 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-400">
+                    {{ w }}
+                  </div>
+                  <span class="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Wing {{ w }}</span>
+                  <div class="flex-1 border-t border-dashed border-gray-200 dark:border-gray-700"></div>
+                  <span class="text-xs font-medium tracking-widest text-gray-300 dark:text-gray-600">— CORRIDOR —</span>
+                </div>
+
+                <!-- Room grid -->
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  <div *ngFor="let room of roomsByWing[w]; trackBy: trackById"
+                       class="group relative cursor-pointer overflow-hidden rounded-xl border bg-white transition-all duration-200 dark:bg-white/[0.03]"
+                       [class.ring-2]="selectedRoom?.id === room.id"
+                       [style.border-color]="selectedRoom?.id === room.id ? room.cfg.color : ''"
+                       [ngClass]="selectedRoom?.id !== room.id ? 'border-gray-200 hover:border-gray-300 dark:border-gray-700' : ''"
+                       (click)="selectRoom(room)">
+
+                    <!-- Top accent bar -->
+                    <div class="h-1 w-full" [style.background]="room.cfg.color"></div>
+
+                    <!-- Occupancy fill overlay -->
+                    <div class="pointer-events-none absolute bottom-0 left-0 right-0 opacity-30 transition-all duration-700"
+                         [style.height]="room.occupancyPct + '%'"
+                         [style.background]="'linear-gradient(to top,' + room.cfg.color + '18, transparent)'"></div>
+
+                    <div class="relative p-4">
+                      <!-- Header row -->
+                      <div class="mb-3 flex items-start justify-between">
+                        <div>
+                          <div class="text-base font-bold leading-tight text-gray-800 dark:text-white/90">{{ room.roomNumber }}</div>
+                          <span class="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                                [style.color]="room.cfg.color"
+                                [style.background]="room.cfg.color + '18'"
+                                [style.border]="'1px solid ' + room.cfg.color + '33'">
+                            {{ room.cfg.short }}
+                          </span>
+                        </div>
+                        <span class="rounded-lg px-2 py-1 text-xs font-bold"
+                              [style.color]="freeBedColor(room.freeBeds, room.capacity)"
+                              [style.background]="freeBedColor(room.freeBeds, room.capacity) + '15'"
+                              [style.border]="'1px solid ' + freeBedColor(room.freeBeds, room.capacity) + '33'">
+                          {{ room.freeBeds }}/{{ room.capacity }}
+                        </span>
+                      </div>
+
+                      <!-- Bed slots -->
+                      <div class="mb-3 flex justify-center gap-1.5">
+                        <div *ngFor="let bed of room.beds; trackBy: trackByIndex"
+                             class="flex flex-1 flex-col items-center gap-1">
+                          <svg viewBox="0 0 36 24" width="32" height="21">
+                            <rect x="1" y="10" width="34" height="12" rx="2"
+                              [attr.fill]="bed.occupied ? room.cfg.color+'33' : '#f1f5f9'"
+                              [attr.stroke]="bed.occupied ? (bed.pending ? '#f59e0b' : room.cfg.color) : '#e2e8f0'"
+                              stroke-width="1.2"/>
+                            <rect x="1" y="5" width="7" height="17" rx="2"
+                              [attr.fill]="bed.occupied ? room.cfg.color+'44' : '#e2e8f0'"
+                              [attr.stroke]="bed.occupied ? (bed.pending ? '#f59e0b' : room.cfg.color) : '#cbd5e1'"
+                              stroke-width="1.2"/>
+                            <rect *ngIf="bed.occupied" x="2" y="6" width="5" height="4" rx="1"
+                              [attr.fill]="bed.pending ? '#f59e0b88' : room.cfg.color+'88'"/>
+                            <rect x="3" y="21" width="3" height="3" rx="1"
+                              [attr.fill]="bed.occupied ? room.cfg.color+'55' : '#cbd5e1'"/>
+                            <rect x="30" y="21" width="3" height="3" rx="1"
+                              [attr.fill]="bed.occupied ? room.cfg.color+'55' : '#cbd5e1'"/>
+                            <ng-container *ngIf="bed.occupied">
+                              <ellipse cx="19" cy="13" rx="7" ry="4" [attr.fill]="room.cfg.color+'44'"/>
+                              <circle cx="25" cy="12" r="2.5" [attr.fill]="bed.pending ? '#f59e0b' : room.cfg.color"/>
+                            </ng-container>
+                          </svg>
+                          <span class="text-[8px] font-semibold leading-none"
+                                [style.color]="bed.occupied ? (bed.pending ? '#f59e0b' : room.cfg.color) : '#94a3b8'">
+                            {{ bed.occupied ? (bed.pending ? 'PEND' : 'OCC') : 'FREE' }}
+                          </span>
+                          <span *ngIf="bed.occupied && bed.daysLeft !== undefined"
+                                class="text-[7px] leading-none"
+                                [ngClass]="bed.daysLeft <= 1 ? 'font-bold text-red-500' : 'text-gray-400'">
+                            {{ bed.daysLeft === 0 ? '→today' : bed.daysLeft + 'd' }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <!-- Occupancy bar -->
+                      <div class="mb-2 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                        <div class="h-full rounded-full transition-all duration-700"
+                             [style.width]="room.occupancyPct + '%'"
+                             [style.background]="occupancyColor(room.occupancyPct)"></div>
+                      </div>
+
+                      <!-- Footer -->
+                      <div class="flex justify-between text-xs text-gray-400">
+                        <span>{{ room.capacity - room.freeBeds }}/{{ room.capacity }} occupied</span>
+                        <span class="font-semibold" [style.color]="freeBedColor(room.freeBeds, room.capacity)">
+                          {{ room.freeBeds }} free
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </ng-container>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── DETAIL PANEL ── -->
+        <div *ngIf="selectedRoom"
+             class="sticky top-5 w-80 flex-shrink-0 rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+
+          <div class="flex items-start justify-between border-b border-gray-100 px-5 py-5 dark:border-gray-800"
+               [style.border-top]="'3px solid ' + selectedRoom.cfg.color">
+            <div>
+              <div class="text-xl font-bold leading-tight text-gray-800 dark:text-white/90">
+                Room {{ selectedRoom.roomNumber }}
+              </div>
+              <div class="mt-1 text-xs font-semibold uppercase tracking-wider"
+                   [style.color]="selectedRoom.cfg.color">
+                {{ selectedRoom.cfg.label }} · Wing {{ selectedRoom.wing }}
+              </div>
+              <div class="mt-1 text-xs text-gray-400">{{ selectedRoom.description }}</div>
+            </div>
+            <button (click)="selectedRoom=null"
+                    class="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-500 transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+              ✕
+            </button>
+          </div>
+
+          <div class="p-5">
+
+            <!-- Bed Status -->
+            <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              Bed Status
+            </p>
+            <div class="mb-5 flex flex-col gap-2">
+              <div *ngFor="let bed of selectedRoom.beds; trackBy: trackByIndex"
+                   class="flex items-center gap-3 rounded-xl border px-3 py-2.5 transition"
+                   [style.border-left-width]="'3px'"
+                   [style.border-left-color]="bed.occupied ? (bed.pending ? '#f59e0b' : selectedRoom.cfg.color) : '#e2e8f0'"
+                   [ngClass]="bed.occupied
+                     ? 'border-gray-200 bg-gray-50/50 dark:border-gray-700 dark:bg-white/[0.03]'
+                     : 'border-gray-100 bg-white dark:border-gray-800'">
+                <span class="flex-shrink-0 text-lg">🛏️</span>
+                <div class="min-w-0 flex-1">
+                  <div class="text-xs font-semibold text-gray-800 dark:text-white/90">Bed {{ bed.bedIndex + 1 }}</div>
+                  <div *ngIf="bed.occupied" class="mt-0.5 text-xs text-gray-400">Patient #{{ bed.patientId }}</div>
+                  <div *ngIf="!bed.occupied" class="mt-0.5 text-xs font-medium text-emerald-500">— available —</div>
+                  <div *ngIf="bed.occupied && bed.daysLeft !== undefined"
+                       class="mt-0.5 text-xs"
+                       [ngClass]="bed.daysLeft! <= 1 ? 'font-semibold text-red-500' : 'text-gray-400'">
+                    📅 {{ bed.daysLeft === 0 ? 'Discharge today' : 'Discharge in ' + bed.daysLeft + ' days' }}
+                  </div>
+                </div>
+                <span class="flex-shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase"
+                      [style.color]="bed.occupied ? (bed.pending ? '#f59e0b' : selectedRoom.cfg.color) : '#10b981'"
+                      [style.background]="bed.occupied ? (bed.pending ? '#fef3c7' : selectedRoom.cfg.color + '15') : '#d1fae5'"
+                      [style.border-color]="bed.occupied ? (bed.pending ? '#fcd34d' : selectedRoom.cfg.color + '44') : '#a7f3d0'">
+                  {{ bed.occupied ? bed.status?.toUpperCase() : 'FREE' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Mini 7-day forecast -->
+            <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              7-Day Availability
+            </p>
+            <div class="grid grid-cols-7 gap-1">
+              <div *ngFor="let day of days" class="text-center">
+                <div class="mb-1.5 text-[9px] font-semibold uppercase text-gray-400">
+                  {{ day.short.split(' ')[0] }}
+                </div>
+                <div class="mx-auto flex h-10 w-full flex-col justify-end overflow-hidden rounded-t-sm bg-gray-100 dark:bg-gray-800">
+                  <div class="w-full rounded-t-sm transition-all duration-500"
+                       [style.height]="(1 - getProjectedFree(selectedRoom.id, selectedRoom.capacity, day.offset) / selectedRoom.capacity) * 40 + 'px'"
+                       [style.background]="freeBedColor(getProjectedFree(selectedRoom.id, selectedRoom.capacity, day.offset), selectedRoom.capacity)">
+                  </div>
+                </div>
+                <div class="mt-1 text-sm font-bold leading-tight"
+                     [style.color]="freeBedColor(getProjectedFree(selectedRoom.id, selectedRoom.capacity, day.offset), selectedRoom.capacity)">
+                  {{ getProjectedFree(selectedRoom.id, selectedRoom.capacity, day.offset) }}
+                </div>
+                <div class="text-[8px] text-gray-400">free</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════ 7-DAY FORECAST ════════════════════ -->
+      <div *ngIf="view==='forecast'"
+           class="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+
+        <!-- Card header -->
+        <div class="flex flex-wrap items-center gap-4 border-b border-gray-100 px-6 py-5 dark:border-gray-800">
+          <div class="flex items-center gap-3">
+            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-500/[0.12]">
+              <svg class="h-5 w-5 text-brand-500 dark:text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+            </span>
+            <h2 class="text-lg font-semibold text-gray-800 dark:text-white/90">7-Day Discharge Forecast</h2>
+          </div>
+          <div class="ml-auto flex flex-wrap items-center gap-4 text-xs text-gray-400">
+            <span class="flex items-center gap-1.5">
+              <span class="h-2 w-2 rounded-full bg-emerald-500"></span>Available
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="h-2 w-2 rounded-full bg-amber-400"></span>Partially full
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="h-2 w-2 rounded-full bg-red-500"></span>Full
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-emerald-200"></span>Discharge day
+            </span>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[820px] text-left text-sm">
+            <thead>
+              <tr class="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/60">
+                <th class="w-52 px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  Room
+                </th>
+                <th *ngFor="let day of days"
+                    class="px-2 py-3.5 text-center"
+                    [ngClass]="day.offset === 0 ? 'bg-brand-50 dark:bg-brand-500/10' : ''"
+                    (mouseenter)="hoveredDay = day.offset"
+                    (mouseleave)="hoveredDay = null">
+                  <div class="text-xs font-bold"
+                       [ngClass]="day.offset === 0 ? 'text-brand-500' : 'text-gray-600 dark:text-gray-400'">
+                    {{ day.short.split(' ')[0] }}
+                  </div>
+                  <div class="mt-0.5 text-[10px] font-medium text-gray-400">
+                    {{ day.short.split(' ').slice(1).join(' ') }}
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+
+              <ng-container *ngFor="let w of wings">
+                <ng-container *ngIf="roomsByWing[w].length > 0">
+
+                  <!-- Wing separator -->
+                  <tr class="bg-gray-50/80 dark:bg-white/[0.02]">
+                    <td [attr.colspan]="8" class="px-5 py-2">
+                      <div class="flex items-center gap-2">
+                        <span class="flex h-5 w-5 items-center justify-center rounded bg-brand-50 text-[10px] font-bold text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
+                          {{ w }}
+                        </span>
+                        <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Wing {{ w }}</span>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Room rows -->
+                  <tr *ngFor="let room of roomsByWing[w]; trackBy: trackById"
+                      class="transition hover:bg-gray-50/60 dark:hover:bg-white/[0.02]">
+
+                    <!-- Room label cell -->
+                    <td class="cursor-pointer px-5 py-3" (click)="goToFloor(room)">
+                      <div class="flex items-center gap-2.5">
+                        <div class="h-8 w-1 flex-shrink-0 rounded-full" [style.background]="room.cfg.color"></div>
+                        <div>
+                          <div class="text-sm font-bold text-gray-800 dark:text-white/90">{{ room.roomNumber }}</div>
+                          <div class="mt-0.5 text-xs font-medium" [style.color]="room.cfg.color">
+                            {{ room.cfg.label }} · {{ room.capacity }} beds
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    <!-- Day cells -->
+                    <td *ngFor="let day of days"
+                        class="relative p-1.5 text-center"
+                        [ngClass]="day.offset === 0 ? 'bg-brand-50/30 dark:bg-brand-500/5' : ''"
+                        (mouseenter)="hoveredDay = day.offset"
+                        (mouseleave)="hoveredDay = null">
+                      <div class="relative overflow-hidden rounded-lg border px-2 py-2.5 transition-all duration-150"
+                           [style.border-color]="forecastCellBorder(getProjectedFree(room.id, room.capacity, day.offset), room.capacity, hoveredDay === day.offset)"
+                           [style.background]="forecastCellBg(getProjectedFree(room.id, room.capacity, day.offset), room.capacity, hoveredDay === day.offset)">
+
+                        <!-- Discharge dot -->
+                        <div *ngIf="getDischargingCount(room.id, day.iso) > 0"
+                             class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-emerald-400 shadow-sm ring-1 ring-emerald-200">
+                        </div>
+
+                        <!-- Fill bar -->
+                        <div class="absolute bottom-0 left-0 right-0 rounded-b-lg opacity-20 transition-all duration-500"
+                             [style.height]="(1 - getProjectedFree(room.id, room.capacity, day.offset) / room.capacity) * 100 + '%'"
+                             [style.background]="freeBedColor(getProjectedFree(room.id, room.capacity, day.offset), room.capacity)">
+                        </div>
+
+                        <div class="relative">
+                          <div class="text-lg font-black leading-none"
+                               [style.color]="freeBedColor(getProjectedFree(room.id, room.capacity, day.offset), room.capacity)">
+                            {{ getProjectedFree(room.id, room.capacity, day.offset) }}
+                          </div>
+                          <div class="text-[9px] font-medium text-gray-400">/{{ room.capacity }}</div>
+                          <div *ngIf="getProjectedFree(room.id, room.capacity, day.offset) === 0"
+                               class="mt-0.5 text-[8px] font-bold uppercase tracking-wide text-red-500">FULL</div>
+                          <div *ngIf="getDischargingCount(room.id, day.iso) > 0"
+                               class="mt-0.5 text-[8px] font-semibold text-emerald-500">
+                            +{{ getDischargingCount(room.id, day.iso) }} out
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+
+                </ng-container>
+              </ng-container>
+
+              <!-- Clinic totals row -->
+              <tr class="border-t-2 border-gray-200 bg-gray-50/80 dark:border-gray-700 dark:bg-white/[0.02]">
+                <td class="px-5 py-3.5">
+                  <div class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    Clinic Total
+                  </div>
+                  <div class="mt-0.5 text-xs text-gray-400">{{ totalBeds }} beds total</div>
+                </td>
+                <td *ngFor="let day of days"
+                    class="p-1.5 text-center"
+                    (mouseenter)="hoveredDay = day.offset"
+                    (mouseleave)="hoveredDay = null">
+                  <div class="rounded-lg border px-2 py-2 transition-all"
+                       [style.border-color]="forecastCellBorder(getHospitalTotalFree(day.offset), totalBeds, hoveredDay === day.offset)"
+                       [style.background]="forecastCellBg(getHospitalTotalFree(day.offset), totalBeds, hoveredDay === day.offset)">
+                    <div class="text-base font-black leading-none"
+                         [style.color]="freeBedColor(getHospitalTotalFree(day.offset), totalBeds)">
+                      {{ getHospitalTotalFree(day.offset) }}
+                    </div>
+                    <div class="text-[9px] text-gray-400">/{{ totalBeds }}</div>
+                    <div class="mt-0.5 text-[9px] font-bold"
+                         [style.color]="freeBedColor(getHospitalTotalFree(day.offset), totalBeds)">
+                      {{ totalBeds ? (getHospitalTotalFree(day.offset) / totalBeds * 100 | number:'1.0-0') : 0 }}%
+                    </div>
+                  </div>
+                </td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Forecast footer -->
+        <div class="flex flex-wrap items-center gap-3 border-t border-gray-100 px-6 py-4 text-xs text-gray-400 dark:border-gray-800">
+          <svg class="h-3.5 w-3.5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span>Click any room name to view in floor plan</span>
+          <span class="text-gray-200 dark:text-gray-700">·</span>
+          <span>Hover a column to highlight across all rooms</span>
+          <span class="text-gray-200 dark:text-gray-700">·</span>
+          <span>Based on expected discharge dates from hospitalization records</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

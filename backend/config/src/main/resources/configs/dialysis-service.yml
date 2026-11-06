@@ -1,0 +1,29 @@
+server:
+  port: 8075
+
+spring:
+  application:
+    name: dialysis-service
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/dialysis_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USER:root}
+    password: ${DB_PASS:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # Keycloak / OAuth2
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/nephro-realm
+
+keycloak:
+  auth-server-url: http://localhost:8180
+  realm: nephro-realm
+  resource: dialysis-service
+  credentials:
+    secret: ${DIALYSIS_KC_SECRET:j0QkFqdtpGOdphdpd5Rh3QNrWO9zPGrv}
+
+dialysis:
+  max-concurrent-sessions-per-shift: 10

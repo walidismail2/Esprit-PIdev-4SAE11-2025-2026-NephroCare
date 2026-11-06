@@ -1,0 +1,11 @@
+package esprit.dialysisservice.dialysis.solver;
+
+public enum ConstraintType {
+    CAPACITY_PER_SHIFT_DAY,
+    PATIENT_NO_DOUBLE_BOOKING_SAME_DAY,
+    TREATMENT_ONLY_ONE_OPEN_SESSION,
+    TREATMENT_MUST_BE_ACTIVE,
+    NURSE_ONLY_ONE_OPEN_SESSION,
+    PATIENT_WEEKLY_FREQUENCY,
+    SESSION_DAY_NOT_IN_PAST
+}

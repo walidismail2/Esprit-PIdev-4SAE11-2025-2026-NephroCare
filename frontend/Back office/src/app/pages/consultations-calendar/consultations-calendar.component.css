@@ -1,0 +1,75 @@
+/* Consultations Calendar Component Styles */
+
+::ng-deep .custom-calendar {
+  width: 100%;
+}
+
+::ng-deep .fc {
+  font-family: inherit;
+  --fc-border-color: #e5e7eb;
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: #f8fafc;
+  --fc-today-bg-color: rgba(56, 189, 248, 0.12);
+}
+
+::ng-deep .fc .fc-toolbar-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+::ng-deep .fc-button-primary {
+  background-color: #0284c7;
+  border-color: #0284c7;
+  border-radius: 0.5rem;
+  box-shadow: none;
+}
+
+::ng-deep .fc-button-primary:hover {
+  background-color: #0369a1;
+  border-color: #0369a1;
+}
+
+::ng-deep .fc-button-primary.fc-button-active {
+  background-color: #075985;
+  border-color: #075985;
+}
+
+::ng-deep .fc .fc-daygrid-day-frame {
+  min-height: 6rem;
+}
+
+::ng-deep .fc .fc-event {
+  border-radius: 0.5rem;
+  border: none;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+::ng-deep .fc .fc-event-main {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+::ng-deep .dark .fc {
+  background-color: transparent;
+  color: #fff;
+  --fc-border-color: #374151;
+  --fc-neutral-bg-color: rgba(255, 255, 255, 0.02);
+  --fc-today-bg-color: rgba(14, 116, 144, 0.22);
+}
+
+::ng-deep .dark .fc .fc-col-header-cell {
+  background-color: transparent;
+  color: #fff;
+}
+
+::ng-deep .dark .fc .fc-daygrid-day {
+  background-color: transparent;
+}
+
+::ng-deep .dark .fc .fc-toolbar-title {
+  color: #f9fafb;
+}

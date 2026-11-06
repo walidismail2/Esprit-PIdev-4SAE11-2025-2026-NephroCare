@@ -1,0 +1,129 @@
+<aside
+  class="fixed top-0 left-0 z-50 flex h-screen flex-col border-r border-gray-200 bg-gradient-to-b from-white to-gray-50 px-4 text-gray-900 shadow-sm transition-all duration-300 ease-in-out dark:border-gray-800 dark:from-gray-900 dark:to-gray-900"
+  [ngClass]="{
+    'w-[290px]': (isExpanded$ | async) || (isMobileOpen$ | async) || (isHovered$ | async),
+    'w-[90px]': !((isExpanded$ | async) || (isMobileOpen$ | async) || (isHovered$ | async)),
+    'translate-x-0': isMobileOpen$ | async,
+    '-translate-x-full': !(isMobileOpen$ | async),
+    'xl:translate-x-0': true
+  }"
+  (mouseenter)="onSidebarMouseEnter()"
+  (mouseleave)="sidebarService.setHovered(false)">
+  <div
+    class="flex py-6"
+    [ngClass]="{
+      'xl:justify-center': !((isExpanded$ | async) || (isHovered$ | async)),
+      'justify-start': (isExpanded$ | async) || (isHovered$ | async)
+    }">
+    <a routerLink="/" class="group flex items-center gap-2.5 text-brand-700 dark:text-brand-300">
+      <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-sm font-bold text-white shadow-sm">
+        NC
+      </span>
+      @if ((isExpanded$ | async) || (isHovered$ | async) || (isMobileOpen$ | async)) {
+        <span class="leading-tight">
+          <span class="block text-sm font-semibold tracking-tight">NephroCare</span>
+          <span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Back Office</span>
+        </span>
+      }
+    </a>
+  </div>
+
+  <div class="mb-4 rounded-xl border border-gray-200 bg-white/70 px-3 py-2 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-900/60 dark:text-gray-300"
+       [style.display]="((isExpanded$ | async) || (isHovered$ | async) || (isMobileOpen$ | async)) ? 'block' : 'none'">
+    <span class="font-semibold text-gray-800 dark:text-gray-100">Operations</span>
+    <span class="ml-1">workspace</span>
+  </div>
+
+  <div class="no-scrollbar flex flex-col overflow-y-auto pb-4 duration-300 ease-linear">
+    <nav class="mb-6">
+      <div class="mb-4">
+        <h2
+          class="mb-2 flex px-1 text-[11px] uppercase leading-[20px] tracking-[0.14em] text-gray-400"
+          [ngClass]="{
+            'xl:justify-center': !((isExpanded$ | async) || (isHovered$ | async)),
+            'justify-start': (isExpanded$ | async) || (isHovered$ | async)
+          }">
+          @if ((isExpanded$ | async) || (isHovered$ | async) || (isMobileOpen$ | async)) {
+            Navigation
+          } @else {
+            <i class="bi bi-three-dots"></i>
+          }
+        </h2>
+
+        <ul class="flex flex-col gap-1.5">
+          @for (nav of navItems; track $index; let i = $index) {
+            <li>
+              @if (nav.subItems) {
+                <button
+                  (click)="toggleSubmenu('main', i)"
+                  class="menu-item group cursor-pointer"
+                  [class.menu-item-active]="openSubmenu === 'main-' + i"
+                  [class.menu-item-inactive]="openSubmenu !== 'main-' + i"
+                  [ngClass]="{
+                    'xl:justify-center': !((isExpanded$ | async) || (isHovered$ | async)),
+                    'xl:justify-start': (isExpanded$ | async) || (isHovered$ | async)
+                  }">
+                  <span
+                    class="menu-item-icon-size"
+                    [class.menu-item-icon-active]="openSubmenu === 'main-' + i"
+                    [class.menu-item-icon-inactive]="openSubmenu !== 'main-' + i"
+                    [innerHTML]="nav.icon | safeHtml">
+                  </span>
+                  @if ((isExpanded$ | async) || (isHovered$ | async) || (isMobileOpen$ | async)) {
+                    <span class="menu-item-text">{{ nav.name }}</span>
+                    <i class="bi bi-chevron-down ml-auto text-xs" [ngClass]="{ 'rotate-180': openSubmenu === 'main-' + i }"></i>
+                  }
+                </button>
+
+                <div
+                  class="overflow-hidden transition-all duration-300"
+                  [id]="'main-' + i"
+                  [style.display]="((isExpanded$ | async) || (isHovered$ | async) || (isMobileOpen$ | async)) ? 'block' : 'none'"
+                  [ngStyle]="{
+                    height: openSubmenu === 'main-' + i ? (subMenuHeights['main-' + i] || 0) + 'px' : '0px'
+                  }">
+                  <ul class="ml-8 mt-2 space-y-1.5 border-l border-gray-200 pl-3 dark:border-gray-800">
+                    @for (subItem of nav.subItems; track $index) {
+                      <li>
+                        <a
+                          [routerLink]="subItem.path"
+                          (click)="onSubmenuClick()"
+                          class="menu-dropdown-item"
+                          [ngClass]="{
+                            'menu-dropdown-item-inactive': !isActive(subItem.path),
+                            'menu-dropdown-item-active': isActive(subItem.path)
+                          }">
+                          {{ subItem.name }}
+                        </a>
+                      </li>
+                    }
+                  </ul>
+                </div>
+              } @else {
+                @if (nav.path) {
+                  <a
+                    [routerLink]="nav.path"
+                    routerLinkActive="menu-item-active"
+                    class="menu-item group"
+                    [ngClass]="{ 'menu-item-inactive': !isActive(nav.path) }">
+                    <span
+                      class="menu-item-icon-size"
+                      [ngClass]="{
+                        'menu-item-icon-active': isActive(nav.path),
+                        'menu-item-icon-inactive': !isActive(nav.path)
+                      }"
+                      [innerHTML]="nav.icon | safeHtml">
+                    </span>
+                    @if ((isExpanded$ | async) || (isHovered$ | async) || (isMobileOpen$ | async)) {
+                      <span class="menu-item-text">{{ nav.name }}</span>
+                    }
+                  </a>
+                }
+              }
+            </li>
+          }
+        </ul>
+      </div>
+    </nav>
+  </div>
+</aside>

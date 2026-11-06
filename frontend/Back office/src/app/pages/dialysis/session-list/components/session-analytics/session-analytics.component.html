@@ -1,0 +1,145 @@
+<div class="p-6 border-b border-stroke dark:border-strokedark">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div class="rounded border border-stroke p-4 dark:border-strokedark">
+            <p class="text-sm text-gray-500 dark:text-gray-300">Average Kt/V</p>
+            <p class="mt-1 text-2xl font-semibold text-black dark:text-white">{{ avgKtV != null ? avgKtV : '-' }}</p>
+        </div>
+
+        <div class="rounded border border-stroke p-4 dark:border-strokedark">
+            <p class="text-sm text-gray-500 dark:text-gray-300">Adequacy</p>
+            <div class="mt-2">
+                <app-badge variant="light" size="sm" [color]="adequacyColor">{{ adequacyLabel }}</app-badge>
+            </div>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-300">Threshold: 1.2</p>
+        </div>
+
+        <div class="rounded border border-stroke p-4 dark:border-strokedark">
+            <p class="text-sm text-gray-500 dark:text-gray-300">Open Session</p>
+            <div class="mt-2">
+                <app-badge variant="light" size="sm" [color]="hasAnyOpenSession ? 'warning' : 'success'">
+                    {{ hasAnyOpenSession ? 'YES' : 'NO' }}
+                </app-badge>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="p-6 border-b border-stroke dark:border-strokedark">
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+            <h4 class="text-base font-semibold text-black dark:text-white">Adequacy Analytics</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-300">Latest metrics + weekly trend (last 8 weeks)</p>
+        </div>
+        <div class="text-xs text-gray-500 dark:text-gray-300" *ngIf="analyticsLoading">Loading analytics...</div>
+    </div>
+
+    <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div class="rounded border border-stroke p-4 dark:border-strokedark">
+            <p class="text-sm text-gray-500 dark:text-gray-300">Latest URR</p>
+            <div class="mt-2">
+                <app-badge variant="light" size="sm" [color]="metricColorFn(latestMetrics.urr, 'URR')">
+                    {{ latestMetrics.urr != null ? (latestMetrics.urr + ' %') : '-' }}
+                </app-badge>
+            </div>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-300">Target: ≥ 65%</p>
+        </div>
+
+        <div class="rounded border border-stroke p-4 dark:border-strokedark">
+            <p class="text-sm text-gray-500 dark:text-gray-300">Latest spKt/V</p>
+            <div class="mt-2">
+                <app-badge variant="light" size="sm" [color]="metricColorFn(latestMetrics.spKtV, 'KTV')">
+                    {{ latestMetrics.spKtV != null ? latestMetrics.spKtV : '-' }}
+                </app-badge>
+            </div>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-300">Target: ≥ 1.2</p>
+        </div>
+
+        <div class="rounded border border-stroke p-4 dark:border-strokedark">
+            <p class="text-sm text-gray-500 dark:text-gray-300">Latest eKt/V</p>
+            <div class="mt-2">
+                <app-badge variant="light" size="sm" [color]="metricColorFn(latestMetrics.eKtV, 'KTV')">
+                    {{ latestMetrics.eKtV != null ? latestMetrics.eKtV : '-' }}
+                </app-badge>
+            </div>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-300">Rebound-adjusted estimate</p>
+        </div>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div class="rounded border border-stroke dark:border-strokedark overflow-hidden">
+            <div class="px-4 py-3 bg-gray-50 dark:bg-meta-4 border-b border-stroke dark:border-strokedark">
+                <p class="text-sm font-medium text-black dark:text-white">Weekly adequacy % (last 8 weeks)</p>
+            </div>
+            <div class="p-4">
+                <app-bar-chart-one
+                        [categories]="weekLabels"
+                        [values]="weeklyAdequacyPct"
+                        seriesName="Adequacy"
+                        [valueSuffix]="'%'"
+                        [height]="260">
+                </app-bar-chart-one>
+            </div>
+        </div>
+
+        <div class="rounded border border-stroke dark:border-strokedark overflow-hidden">
+            <div class="px-4 py-3 bg-gray-50 dark:bg-meta-4 border-b border-stroke dark:border-strokedark">
+                <p class="text-sm font-medium text-black dark:text-white">Treatment trend (last 20 sessions)</p>
+            </div>
+            <div class="p-4">
+                <app-line-chart-one
+                        [categories]="sessionTrendLabels"
+                        [seriesInput]="sessionTrendSeries"
+                        [height]="320">
+                </app-line-chart-one>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-6 rounded border border-stroke dark:border-strokedark overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 dark:bg-meta-4 border-b border-stroke dark:border-strokedark">
+            <p class="text-sm font-medium text-black dark:text-white">Weekly adequacy</p>
+        </div>
+
+        <div class="p-4">
+            <div *ngIf="weekly.length === 0" class="text-sm text-gray-500 dark:text-gray-300">
+                No weekly data yet (complete sessions are required).
+            </div>
+
+            <div *ngIf="weekly.length > 0" class="max-w-full overflow-x-auto">
+                <table class="w-full table-auto">
+                    <thead>
+                    <tr class="bg-gray-2 text-left dark:bg-meta-4">
+                        <th class="py-3 px-3 font-medium text-black dark:text-white">Week</th>
+                        <th class="py-3 px-3 font-medium text-black dark:text-white">Sessions</th>
+                        <th class="py-3 px-3 font-medium text-black dark:text-white">Avg URR</th>
+                        <th class="py-3 px-3 font-medium text-black dark:text-white">Avg spKt/V</th>
+                        <th class="py-3 px-3 font-medium text-black dark:text-white">Avg eKt/V</th>
+                        <th class="py-3 px-3 font-medium text-black dark:text-white">Adequacy %</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr *ngFor="let w of weekly" class="border-b border-[#eee] dark:border-strokedark">
+                        <td class="py-3 px-3 text-black dark:text-white">
+                            {{ w.weekStart | date:'mediumDate' }} → {{ w.weekEnd | date:'mediumDate' }}
+                        </td>
+                        <td class="py-3 px-3 text-black dark:text-white">{{ w.sessionsCount }}</td>
+                        <td class="py-3 px-3 text-black dark:text-white">{{ w.avgURR != null ? (w.avgURR + ' %') : '-' }}</td>
+                        <td class="py-3 px-3 text-black dark:text-white">{{ w.avgSpKtV != null ? w.avgSpKtV : '-' }}</td>
+                        <td class="py-3 px-3 text-black dark:text-white">{{ w.avgEKtV != null ? w.avgEKtV : '-' }}</td>
+                        <td class="py-3 px-3">
+                            <app-badge variant="light" size="sm"
+                                       [color]="w.adequacyPct != null && w.adequacyPct >= 80 ? 'success' : (w.sessionsCount === 0 ? 'light' : 'warning')">
+                                {{ w.sessionsCount === 0 ? '-' : (w.adequacyPct + ' %') }}
+                            </app-badge>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="mt-3 text-xs text-gray-500 dark:text-gray-300">
+                Adequate session = (URR ≥ 65%) AND (spKt/V ≥ threshold). Threshold comes from SystemConfig (ktvAlertThreshold).
+            </p>
+        </div>
+    </div>
+</div>

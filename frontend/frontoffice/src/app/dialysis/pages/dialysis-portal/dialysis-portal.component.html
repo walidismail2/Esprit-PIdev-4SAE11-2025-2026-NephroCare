@@ -1,0 +1,430 @@
+<div class="dial-page">
+  <div class="container-fluid py-5">
+    <div class="container">
+
+      <!-- PAGE HEADER -->
+      <div class="page-header text-center mx-auto mb-5">
+        <p class="portal-label">Patient Portal</p>
+        <h1 class="page-title">My Dialysis Care</h1>
+        <p class="page-subtitle">View your treatment plan, sessions history, and adequacy (Kt/V).</p>
+      </div>
+
+      <!-- STATS BANNER -->
+      <div class="stats-banner row g-3 mb-4" *ngIf="!loading && hasAnyData">
+        <div class="col-6 col-md-3">
+          <div class="stat-card stat-total">
+            <div class="stat-value">{{ summary.totalSessions }}</div>
+            <div class="stat-label">Total Sessions</div>
+          </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+          <div class="stat-card stat-active">
+            <div class="stat-value">{{ summary.activeTreatment ? '1' : '0' }}</div>
+            <div class="stat-label">Active Treatment</div>
+            <div class="stat-dot" style="background:#20c997;"></div>
+          </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+          <div class="stat-card stat-ktv" [class.stat-card-critical]="summary.avgKtV != null && summary.avgKtV < 1.2">
+            <div class="stat-value">{{ summary.avgKtV != null ? (summary.avgKtV | number:'1.1-2') : '—' }}</div>
+            <div class="stat-label">Avg Kt/V</div>
+            <div class="stat-dot"
+                 [style.background]="summary.avgKtV != null && summary.avgKtV < 1.2 ? '#ef4444' : '#0ea5e9'"></div>
+          </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+          <div class="stat-card stat-compliance" [class.stat-card-warning]="summary.compliancePct != null && summary.compliancePct < 70">
+            <div class="stat-value">{{ summary.compliancePct != null ? (summary.compliancePct | number:'1.0-0') + '%' : '—' }}</div>
+            <div class="stat-label">This Week Compliance</div>
+            <div class="stat-dot"
+                 [style.background]="summary.compliancePct != null && summary.compliancePct < 70 ? '#ffc107' : '#20c997'"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALERT BANNER -->
+      <div class="alert-banner mb-4" *ngIf="!loading && (isLowKtv || isLowCompliance)">
+        <div class="d-flex align-items-center gap-3">
+          <div class="alert-icon">
+            <i class="fa fa-exclamation-triangle"></i>
+          </div>
+          <div>
+            <div class="fw-bold">
+              Attention needed
+              <span *ngIf="isLowKtv">— Low adequacy (Kt/V)</span>
+              <span *ngIf="isLowCompliance && !isLowKtv">— Low compliance</span>
+            </div>
+            <div class="small opacity-75">
+              If this persists, contact your care team. This page is informational and not medical advice.
+            </div>
+          </div>
+          <button class="btn btn-sm btn-outline-light ms-auto rounded-pill" type="button" (click)="scrollToSection('sessions')">
+            View sessions →
+          </button>
+        </div>
+      </div>
+
+      <!-- TOOLBAR -->
+      <div class="toolbar d-flex flex-wrap align-items-center gap-3 mb-4" *ngIf="!loading && hasAnyData">
+
+        <!-- Search -->
+        <div class="search-wrap flex-grow-1" style="min-width:220px;max-width:340px;">
+          <div class="input-group shadow-sm">
+            <span class="input-group-text bg-white border-end-0">
+              <i class="fa fa-search text-primary"></i>
+            </span>
+            <input type="text"
+                   class="form-control border-start-0 bg-white"
+                   placeholder="Search sessions (date/ktv/bp)…"
+                   [(ngModel)]="searchTerm"
+                   (input)="applyFilters()"
+                   name="search"
+                   [ngModelOptions]="{standalone: true}">
+            <button *ngIf="searchTerm"
+                    class="btn btn-outline-secondary border-start-0"
+                    type="button"
+                    (click)="searchTerm=''; applyFilters()">
+              <i class="fa fa-times"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Status pills -->
+        <div class="filter-pills d-flex gap-2 flex-wrap">
+          <button class="filter-pill" [class.active]="sessionFilter === 'all'" (click)="setSessionFilter('all')">All</button>
+          <button class="filter-pill filter-pill-done" [class.active]="sessionFilter === 'done'" (click)="setSessionFilter('done')">✓ Completed</button>
+          <button class="filter-pill filter-pill-open" [class.active]="sessionFilter === 'open'" (click)="setSessionFilter('open')">● In progress</button>
+        </div>
+
+        <!-- Sort -->
+        <div class="ms-auto">
+          <select class="form-select form-select-sm sort-select"
+                  [(ngModel)]="sortField"
+                  (change)="applyFilters()"
+                  [ngModelOptions]="{standalone: true}">
+            <option value="date-desc">Newest first</option>
+            <option value="date-asc">Oldest first</option>
+            <option value="ktv-desc">Kt/V highest</option>
+            <option value="ktv-asc">Kt/V lowest</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- LOADING -->
+      <div *ngIf="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <div class="text-muted mt-3">Loading dialysis data…</div>
+      </div>
+
+      <!-- EMPTY STATE -->
+      <div *ngIf="!loading && !hasAnyData" class="empty-state text-center py-5">
+        <div class="empty-icon-wrap mb-4">
+          <i class="fa fa-tint"></i>
+        </div>
+        <h5 class="text-muted mb-2">No dialysis data found</h5>
+        <p class="text-muted small">
+          If you recently started care, your sessions may appear after the first treatment is created.
+        </p>
+      </div>
+
+      <!-- CONTENT -->
+      <div *ngIf="!loading && hasAnyData">
+
+        <!-- TREATMENT CARD -->
+        <div class="row g-4 mb-4" id="treatment">
+          <div class="col-12">
+            <div class="dial-card dial-card-wrap">
+
+              <div class="dial-header d-flex align-items-center justify-content-between px-4 py-3">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="dial-icon-badge">
+                    <i class="fa fa-stethoscope"></i>
+                  </div>
+                  <div>
+                    <div class="dial-title">Current Treatment</div>
+                    <div class="dial-subtitle" *ngIf="summary.activeTreatment; else noActive">
+                      {{ summary.activeTreatment.dialysisType }} • {{ summary.activeTreatment.vascularAccessType }}
+                    </div>
+                    <ng-template #noActive>
+                      <div class="dial-subtitle">No ACTIVE treatment</div>
+                    </ng-template>
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                  <span class="status-badge status-active" *ngIf="summary.activeTreatment">● Active</span>
+                  <span class="status-badge status-archived" *ngIf="!summary.activeTreatment">— None</span>
+                </div>
+              </div>
+
+              <div class="dial-body px-4 py-4">
+                <div class="row g-3">
+                  <div class="col-12 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">Frequency</div>
+                      <div class="mini-value">{{ summary.activeTreatment?.frequencyPerWeek ?? '—' }} / week</div>
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">Duration</div>
+                      <div class="mini-value">{{ summary.activeTreatment?.prescribedDurationMinutes ?? '—' }} min</div>
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">Dry Weight</div>
+                      <div class="mini-value">{{ summary.activeTreatment?.targetDryWeight ?? '—' }} kg</div>
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">Next Session</div>
+                      <div class="mini-value">
+                        {{ summary.nextSessionDate ? (summary.nextSessionDate | date:'MMM d, y') : '—' }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="divider my-4"></div>
+
+                <div class="row g-3">
+                  <div class="col-12 col-md-4">
+                    <div class="metric-tile" [class.metric-critical]="summary.avgKtV != null && summary.avgKtV < 1.2">
+                      <div class="metric-emoji">📈</div>
+                      <div class="metric-value">
+                        {{ summary.avgKtV != null ? (summary.avgKtV | number:'1.1-2') : '—' }}
+                      </div>
+                      <div class="metric-unit">Kt/V</div>
+                      <div class="metric-label">Average Adequacy</div>
+                      <span *ngIf="summary.avgKtV != null && summary.avgKtV < 1.2" class="metric-alert alert-danger-sm">Low</span>
+                      <span *ngIf="summary.avgKtV != null && summary.avgKtV >= 1.2" class="metric-alert alert-ok-sm">Good</span>
+                    </div>
+                  </div>
+
+                  <div class="col-12 col-md-4">
+                    <div class="metric-tile" [class.metric-warning]="summary.compliancePct != null && summary.compliancePct < 70">
+                      <div class="metric-emoji">✅</div>
+                      <div class="metric-value">
+                        {{ summary.compliancePct != null ? (summary.compliancePct | number:'1.0-0') : '—' }}
+                      </div>
+                      <div class="metric-unit">%</div>
+                      <div class="metric-label">Weekly Compliance</div>
+                      <span *ngIf="summary.compliancePct != null && summary.compliancePct < 70" class="metric-alert alert-warning-sm">Low</span>
+                      <span *ngIf="summary.compliancePct != null && summary.compliancePct >= 70" class="metric-alert alert-ok-sm">OK</span>
+                    </div>
+                  </div>
+
+                  <div class="col-12 col-md-4">
+                    <div class="metric-tile">
+                      <div class="metric-emoji">🕒</div>
+                      <div class="metric-value">
+                        {{ summary.lastSessionDate ? (summary.lastSessionDate | date:'MMM d') : '—' }}
+                      </div>
+                      <div class="metric-unit">Last session</div>
+                      <div class="metric-label">Recent Activity</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- SESSION DETAILS (simple panel) -->
+        <div id="session-details" *ngIf="detailsOpen && selectedSession" class="row g-4 mb-4">
+          <div class="col-12">
+            <div class="dial-card">
+              <div class="dial-session-header d-flex align-items-center justify-content-between px-4 py-3">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="dial-icon-badge">
+                    <i class="fa fa-info-circle"></i>
+                  </div>
+                  <div>
+                    <div class="dial-title">Session Details</div>
+                    <div class="dial-subtitle">
+                      {{ selectedSession.sessionDate ? (selectedSession.sessionDate | date:'MMM d, y · HH:mm') : '—' }}
+                    </div>
+                  </div>
+                </div>
+
+                <button class="btn btn-sm btn-outline-secondary rounded-pill" type="button" (click)="closeSessionDetails()">
+                  Close
+                </button>
+              </div>
+
+              <div class="dial-body px-4 py-4">
+                <div class="row g-3">
+                  <div class="col-6 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">Kt/V</div>
+                      <div class="mini-value">{{ sessionKtvLabel(selectedSession) }} ({{ displayKtVName(selectedSession) }})</div>
+                    </div>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">URR</div>
+                      <div class="mini-value">{{ selectedSession.urr != null ? (selectedSession.urr | number:'1.0-0') + '%' : '—' }}</div>
+                    </div>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">Blood Pressure</div>
+                      <div class="mini-value">{{ selectedSession.preBloodPressure || '—' }}</div>
+                    </div>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">UF Volume</div>
+                      <div class="mini-value">{{ selectedSession.ultrafiltrationVolume ?? '—' }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="divider my-4"></div>
+
+                <div class="row g-3">
+                  <div class="col-6 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">Weight Before</div>
+                      <div class="mini-value">{{ selectedSession.weightBefore ?? '—' }} kg</div>
+                    </div>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">Weight After</div>
+                      <div class="mini-value">{{ selectedSession.weightAfter ?? '—' }} kg</div>
+                    </div>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">Pre Urea</div>
+                      <div class="mini-value">{{ selectedSession.preDialysisUrea ?? '—' }}</div>
+                    </div>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">Post Urea</div>
+                      <div class="mini-value">{{ selectedSession.postDialysisUrea ?? '—' }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-4" *ngIf="selectedSession.complications">
+                  <div class="mini-tile">
+                    <div class="mini-label">Complications</div>
+                    <div class="mini-value">{{ selectedSession.complications }}</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SESSIONS -->
+        <div class="mb-3" id="sessions">
+          <span class="text-muted small">
+            Showing <strong>{{ filteredSessions.length }}</strong> of <strong>{{ sessions.length }}</strong> sessions
+          </span>
+        </div>
+
+        <div *ngIf="filteredSessions.length === 0" class="empty-state text-center py-5">
+          <div class="empty-icon-wrap mb-4">
+            <i class="fa fa-calendar"></i>
+          </div>
+          <h5 class="text-muted mb-2">No sessions match your filters</h5>
+          <p class="text-muted small">
+            <button class="btn btn-link btn-sm p-0" (click)="clearFilters()">Clear all</button>
+          </p>
+        </div>
+
+        <div class="row g-4" *ngIf="filteredSessions.length > 0">
+          <div class="col-12 dial-card-wrap"
+               *ngFor="let s of filteredSessions; let i = index"
+               [style.animation-delay]="(i * 50) + 'ms'">
+
+            <div class="dial-card" [class.dial-card-open]="isOpen(s)" [class.dial-card-critical]="isLowSessionKtv(s)">
+
+              <div class="dial-session-header d-flex align-items-center justify-content-between px-4 py-3">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="sess-badge">
+                    {{ (s.sessionDate ? (s.sessionDate | date:'d') : '—') }}
+                  </div>
+                  <div>
+                    <div class="sess-title">
+                      Session {{ s.sessionDate ? (s.sessionDate | date:'MMM y') : '' }}
+                      <span class="sess-sub" *ngIf="s.sessionDate">· {{ s.sessionDate | date:'EEE, HH:mm' }}</span>
+                    </div>
+                    <div class="sess-sub2">
+                      UF: {{ s.ultrafiltrationVolume ?? '—' }}
+                      <span class="dot-sep">•</span>
+                      BP: {{ s.preBloodPressure || '—' }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                  <span class="status-badge status-open" *ngIf="isOpen(s)">● In progress</span>
+                  <span class="status-badge status-done" *ngIf="!isOpen(s)">✓ Completed</span>
+                  <span class="status-badge status-ktv-low" *ngIf="isLowSessionKtv(s)">Low Kt/V</span>
+                </div>
+              </div>
+
+              <div class="dial-body px-4 py-4">
+                <div class="row g-3">
+                  <div class="col-6 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">Weight Before</div>
+                      <div class="mini-value">{{ s.weightBefore ?? '—' }} kg</div>
+                    </div>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">Weight After</div>
+                      <div class="mini-value">{{ s.weightAfter ?? '—' }} kg</div>
+                    </div>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">{{ displayKtVName(s) }}</div>
+                      <div class="mini-value">{{ sessionKtvLabel(s) }}</div>
+                    </div>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <div class="mini-tile">
+                      <div class="mini-label">URR</div>
+                      <div class="mini-value">{{ s.urr != null ? (s.urr | number:'1.0-0') + '%' : '—' }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-4 d-flex flex-wrap gap-2">
+                  <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" (click)="openSessionDetails(s)">
+                    View details
+                  </button>
+
+                  <button type="button"
+                          class="btn btn-sm btn-outline-secondary rounded-pill"
+                          *ngIf="s.id"
+                          (click)="downloadReport(s.id)">
+                    Download report
+                  </button>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div><!-- /content -->
+
+    </div>
+  </div>
+</div>

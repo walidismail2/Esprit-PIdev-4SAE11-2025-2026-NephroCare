@@ -1,0 +1,287 @@
+<div class="driver-page">
+
+  <!-- HEADER -->
+  <div class="driver-header">
+    <div class="driver-avatar-big">{{ (driverName[0] || '?').toUpperCase() }}</div>
+    <div class="driver-header__info">
+      <p class="driver-header__sub">Espace Livreur</p>
+      <h1 class="driver-header__name">{{ driverName || 'Livreur' }}</h1>
+      <p class="driver-header__rate">
+        Success rate :
+        <strong [class.rate-green]="stats.rate >= 70"
+                [class.rate-orange]="stats.rate >= 40 && stats.rate < 70"
+                [class.rate-red]="stats.rate < 40">{{ stats.rate }}%</strong>
+      </p>
+    </div>
+    <button class="btn-refresh" (click)="loadDeliveries()" [disabled]="loading || geoLoading">
+      <i class="fas fa-sync-alt" [class.fa-spin]="loading || geoLoading"></i>
+    </button>
+  </div>
+
+  <!-- ✅ BANDEAU GEO EN COURS -->
+  <div class="geo-banner" *ngIf="geoLoading">
+    <i class="fas fa-map-marker-alt"></i>
+    Calcul des distances depuis votre position...
+    <span class="geo-dots"><span>.</span><span>.</span><span>.</span></span>
+  </div>
+
+  <!-- STATS -->
+  <div class="driver-stats">
+    <div class="ds-item ds-total">
+      <div class="ds-icon"><i class="fas fa-route"></i></div>
+      <div class="ds-body"><span class="ds-value">{{ stats.total }}</span><span class="ds-label">Total</span></div>
+    </div>
+    <div class="ds-item ds-scheduled" (click)="activeFilter = activeFilter === 'SCHEDULED' ? 'ALL' : 'SCHEDULED'" [class.ds-active]="activeFilter === 'SCHEDULED'">
+      <div class="ds-icon"><i class="fas fa-calendar-check"></i></div>
+      <div class="ds-body"><span class="ds-value">{{ stats.scheduled }}</span><span class="ds-label">Planned</span></div>
+    </div>
+    <div class="ds-item ds-transit" (click)="activeFilter = activeFilter === 'IN_TRANSIT' ? 'ALL' : 'IN_TRANSIT'" [class.ds-active]="activeFilter === 'IN_TRANSIT'">
+      <div class="ds-icon"><i class="fas fa-truck-moving"></i></div>
+      <div class="ds-body"><span class="ds-value">{{ stats.inTransit }}</span><span class="ds-label">In transit</span></div>
+    </div>
+    <div class="ds-item ds-delivered" (click)="activeFilter = activeFilter === 'DELIVERED' ? 'ALL' : 'DELIVERED'" [class.ds-active]="activeFilter === 'DELIVERED'">
+      <div class="ds-icon"><i class="fas fa-box-open"></i></div>
+      <div class="ds-body"><span class="ds-value">{{ stats.delivered }}</span><span class="ds-label">Delivered</span></div>
+    </div>
+    <div class="ds-item ds-failed" (click)="activeFilter = activeFilter === 'FAILED' ? 'ALL' : 'FAILED'" [class.ds-active]="activeFilter === 'FAILED'">
+      <div class="ds-icon"><i class="fas fa-times-circle"></i></div>
+      <div class="ds-body"><span class="ds-value">{{ stats.failed }}</span><span class="ds-label">Failed</span></div>
+    </div>
+  </div>
+
+  <!-- FILTRES + TOGGLE TRI -->
+  <div class="filter-chips-row">
+    <div class="filter-chips">
+      <button class="chip" [class.chip--active]="activeFilter === 'ALL'" (click)="activeFilter = 'ALL'">All</button>
+      <button class="chip chip--scheduled" [class.chip--active]="activeFilter === 'SCHEDULED'"
+              (click)="activeFilter = activeFilter === 'SCHEDULED' ? 'ALL' : 'SCHEDULED'">
+        <i class="fas fa-calendar-check"></i> Planned
+      </button>
+      <button class="chip chip--transit" [class.chip--active]="activeFilter === 'IN_TRANSIT'"
+              (click)="activeFilter = activeFilter === 'IN_TRANSIT' ? 'ALL' : 'IN_TRANSIT'">
+        <i class="fas fa-truck-moving"></i> In transit
+      </button>
+      <button class="chip chip--delivered" [class.chip--active]="activeFilter === 'DELIVERED'"
+              (click)="activeFilter = activeFilter === 'DELIVERED' ? 'ALL' : 'DELIVERED'">
+        <i class="fas fa-box-open"></i> Delivered
+      </button>
+      <button class="chip chip--failed" [class.chip--active]="activeFilter === 'FAILED'"
+              (click)="activeFilter = activeFilter === 'FAILED' ? 'ALL' : 'FAILED'">
+        <i class="fas fa-times-circle"></i> Failed
+      </button>
+    </div>
+
+    <!-- ✅ Toggle distance / date -->
+    <button class="sort-toggle" (click)="toggleSort()">
+      <i class="fas" [ngClass]="sortMode === 'distance' ? 'fa-map-marker-alt' : 'fa-clock'"></i>
+      {{ sortMode === 'distance' ? 'By distance' : 'By date' }}
+    </button>
+  </div>
+
+  <!-- CHARGEMENT -->
+  <div class="state-empty" *ngIf="loading">
+    <i class="fas fa-spinner fa-spin"></i><p>Loading your deliveries...</p>
+  </div>
+
+  <!-- LISTE VIDE -->
+  <div class="state-empty" *ngIf="!loading && filteredDeliveries.length === 0">
+    <i class="fas fa-truck"></i>
+    <p *ngIf="activeFilter === 'ALL'">No delivery assigned.</p>
+    <p *ngIf="activeFilter !== 'ALL'">No deliveries with this status.</p>
+    <button class="chip" (click)="activeFilter = 'ALL'" *ngIf="activeFilter !== 'ALL'">See all</button>
+  </div>
+
+  <!-- LISTE DES LIVRAISONS -->
+  <div class="delivery-list" *ngIf="!loading && filteredDeliveries.length > 0">
+    <div class="delivery-card"
+         *ngFor="let d of filteredDeliveries; let i = index; trackBy: trackById"
+         [class.card--urgent]="isOverdue(d.scheduledAt, d.status)"
+         [class.card--done]="d.status === 'DELIVERED'"
+         [class.card--failed]="d.status === 'FAILED'">
+
+      <!-- Bandeau EN RETARD -->
+      <div class="urgent-band" *ngIf="isOverdue(d.scheduledAt, d.status)">
+        <i class="fas fa-exclamation-triangle"></i> LATE
+      </div>
+
+      <!-- ✅ Rang de proximité -->
+      <div class="rank-badge"
+           *ngIf="sortMode === 'distance' && !d.geoError && d.status !== 'DELIVERED' && d.status !== 'RETURNED'">
+        #{{ i + 1 }}
+      </div>
+
+      <!-- En-tête -->
+      <div class="dc-head">
+        <div class="dc-tracking"><i class="fas fa-barcode"></i><span>{{ d.trackingNumber }}</span></div>
+        <span class="status-badge" [ngClass]="statusClass(d.status)">
+          <i class="fas" [ngClass]="'fa-' + statusIcon(d.status)"></i>
+          {{ statusLabel(d.status) }}
+        </span>
+      </div>
+
+      <!-- ✅ Badge distance + bouton itinéraire -->
+      <div class="dc-distance" *ngIf="d.distanceLabel && !d.geoError">
+        <div class="dist-pill">
+          <i class="fas fa-route"></i>
+          <span>{{ d.distanceLabel }}</span>
+        </div>
+        <button class="btn-maps" (click)="openMaps(d.deliveryAddress)">
+          <i class="fas fa-directions"></i> Navigation
+        </button>
+      </div>
+
+      <!-- Patient -->
+      <div class="dc-patient">
+        <div class="dc-patient__avatar">{{ (d.patientName?.[0] || '?').toUpperCase() }}</div>
+        <div class="dc-patient__info">
+          <span class="dc-patient__name">{{ d.patientName }}</span>
+          <span class="dc-patient__phone">{{ d.phoneNumber }}</span>
+        </div>
+      </div>
+
+      <div class="dc-address"><i class="fas fa-map-marker-alt"></i><span>{{ d.deliveryAddress }}</span></div>
+
+      <!-- Dates -->
+      <div class="dc-dates">
+        <div class="dc-date-row" [class.dc-date--today]="isToday(d.scheduledAt)" [class.dc-date--overdue]="isOverdue(d.scheduledAt, d.status)">
+          <i class="fas fa-clock"></i>
+          <span>Prévue : {{ d.scheduledAt | date:'dd/MM/yyyy HH:mm' }}</span>
+          <span class="today-tag" *ngIf="isToday(d.scheduledAt)">Today</span>
+        </div>
+        <div class="dc-date-row" *ngIf="d.deliveredAt">
+          <i class="fas fa-check"></i><span>Livrée : {{ d.deliveredAt | date:'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+        <div class="dc-attempts" *ngIf="d.attempts > 0">
+          <i class="fas fa-redo"></i> {{ d.attempts }} tentative(s)
+        </div>
+      </div>
+
+      <div class="dc-notes" *ngIf="d.notes"><i class="fas fa-comment"></i> {{ d.notes }}</div>
+
+      <!-- Actions -->
+      <div class="dc-actions">
+        <button class="btn-detail" (click)="viewDelivery(d)"><i class="fas fa-eye"></i> Details</button>
+        <ng-container [ngSwitch]="d.status">
+          <ng-container *ngSwitchCase="'SCHEDULED'">
+            <button class="btn-action action--transit" (click)="askConfirm(d, 'IN_TRANSIT')">🚛 Go on a delivery</button>
+          </ng-container>
+          <ng-container *ngSwitchCase="'IN_TRANSIT'">
+            <button class="btn-action action--delivered" (click)="askConfirm(d, 'DELIVERED')">✅ Mark as delivered</button>
+            <button class="btn-action action--failed" (click)="askConfirm(d, 'FAILED')">❌ Report a failure</button>
+          </ng-container>
+          <ng-container *ngSwitchCase="'FAILED'">
+            <button class="btn-action action--transit" (click)="askConfirm(d, 'IN_TRANSIT')">🔄 Try again</button>
+            <button class="btn-action action--returned" (click)="askConfirm(d, 'RETURNED')">↩️ Return</button>
+          </ng-container>
+          <ng-container *ngSwitchCase="'DELIVERED'">
+            <span class="dc-done-label"><i class="fas fa-check-double"></i> Delivery complete</span>
+          </ng-container>
+          <ng-container *ngSwitchCase="'RETURNED'">
+            <span class="dc-done-label"><i class="fas fa-undo-alt"></i> Returned</span>
+          </ng-container>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : CONFIRMATION -->
+  <div class="modal-overlay" *ngIf="confirmAction" (click)="cancelConfirm()">
+    <div class="modal-box confirm-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-question-circle"></i> Confirm the action</h3>
+        <button class="modal-close" (click)="cancelConfirm()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="confirm-question">
+          Place delivery <strong>{{ confirmAction.delivery.trackingNumber }}</strong> to
+          <span class="status-badge" [ngClass]="statusClass(confirmAction.status)">
+            <i class="fas" [ngClass]="'fa-' + statusIcon(confirmAction.status)"></i>
+            {{ statusLabel(confirmAction.status) }}
+          </span>?
+        </p>
+        <div class="confirm-detail">
+          <i class="fas fa-user"></i> {{ confirmAction.delivery.patientName }}
+          &nbsp;·&nbsp;
+          <i class="fas fa-map-marker-alt"></i> {{ confirmAction.delivery.deliveryAddress }}
+        </div>
+        <!-- ✅ Distance dans la modale de confirmation -->
+        <div class="confirm-distance" *ngIf="confirmAction.delivery.distanceLabel && !confirmAction.delivery.geoError">
+          <i class="fas fa-route"></i> {{ confirmAction.delivery.distanceLabel }}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-labeled cancel" (click)="cancelConfirm()"><i class="fas fa-times"></i> Cancel</button>
+        <button class="btn btn-labeled primary" (click)="executeAction()" [disabled]="actionLoading">
+          <i class="fas fa-spinner fa-spin" *ngIf="actionLoading"></i>
+          <i class="fas fa-check" *ngIf="!actionLoading"></i>
+          {{ actionLoading ? 'En cours...' : 'Confirmer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : DÉTAIL -->
+  <div class="modal-overlay" *ngIf="viewingDelivery" (click)="closeDetail()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-truck"></i> Delivery details</h3>
+        <button class="modal-close" (click)="closeDetail()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <!-- ✅ Banner distance en haut du détail -->
+        <div class="detail-distance-banner" *ngIf="viewingDelivery.distanceLabel && !viewingDelivery.geoError">
+          <i class="fas fa-route"></i>
+          <span>{{ viewingDelivery.distanceLabel }}</span>
+          <button class="btn-maps" (click)="openMaps(viewingDelivery.deliveryAddress)">
+            <i class="fas fa-directions"></i> Navigation
+          </button>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-item"><label>Tracking</label><span class="mono">{{ viewingDelivery.trackingNumber }}</span></div>
+          <div class="detail-item">
+            <label>Statut</label>
+            <span class="status-badge" [ngClass]="statusClass(viewingDelivery.status)">{{ statusLabel(viewingDelivery.status) }}</span>
+          </div>
+          <div class="detail-item"><label>Patient</label><span>{{ viewingDelivery.patientName }}</span></div>
+          <div class="detail-item">
+            <label>Phone</label>
+            <a [href]="'tel:' + viewingDelivery.phoneNumber" class="phone-link">
+              <i class="fas fa-phone"></i> {{ viewingDelivery.phoneNumber }}
+            </a>
+          </div>
+          <div class="detail-item full">
+            <label>Address</label>
+            <a [href]="'https://maps.google.com/?q=' + viewingDelivery.deliveryAddress" target="_blank" class="address-link">
+              <i class="fas fa-map-marker-alt"></i> {{ viewingDelivery.deliveryAddress }}
+            </a>
+          </div>
+          <div class="detail-item"><label>Expected date</label><span>{{ viewingDelivery.scheduledAt | date:'dd/MM/yyyy HH:mm' }}</span></div>
+          <div class="detail-item" *ngIf="viewingDelivery.deliveredAt"><label>Delivered on</label><span>{{ viewingDelivery.deliveredAt | date:'dd/MM/yyyy HH:mm' }}</span></div>
+          <div class="detail-item"><label>Attempts</label><span>{{ viewingDelivery.attempts }}</span></div>
+          <div class="detail-item full" *ngIf="viewingDelivery.notes"><label>Notes</label><span>{{ viewingDelivery.notes }}</span></div>
+        </div>
+
+        <ng-container *ngIf="availableActions(viewingDelivery.status).length > 0">
+          <div class="modal-section-label"><i class="fas fa-bolt"></i> Quick actions</div>
+          <div class="detail-actions-btns">
+            <ng-container [ngSwitch]="viewingDelivery.status">
+              <ng-container *ngSwitchCase="'SCHEDULED'">
+                <button class="btn-action action--transit" (click)="closeDetail(); askConfirm(viewingDelivery!, 'IN_TRANSIT')">🚛 Go on a delivery</button>
+              </ng-container>
+              <ng-container *ngSwitchCase="'IN_TRANSIT'">
+                <button class="btn-action action--delivered" (click)="closeDetail(); askConfirm(viewingDelivery!, 'DELIVERED')">✅ Mark as delivered</button>
+                <button class="btn-action action--failed" (click)="closeDetail(); askConfirm(viewingDelivery!, 'FAILED')">❌ Report a failure</button>
+              </ng-container>
+              <ng-container *ngSwitchCase="'FAILED'">
+                <button class="btn-action action--transit" (click)="closeDetail(); askConfirm(viewingDelivery!, 'IN_TRANSIT')">🔄 Try again</button>
+                <button class="btn-action action--returned" (click)="closeDetail(); askConfirm(viewingDelivery!, 'RETURNED')">↩️ Return</button>
+              </ng-container>
+            </ng-container>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+
+</div>

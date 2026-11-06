@@ -1,0 +1,441 @@
+<div class="diag-page py-5">
+  <div class="container">
+
+    <!-- PAGE HEADER -->
+    <div class="mb-4">
+      <p class="portal-label">Lab Management</p>
+      <h1 class="page-title">Diagnostic Orders</h1>
+      <p class="page-subtitle">Manage and track all diagnostic orders</p>
+      <div class="mt-3">
+        <a routerLink="/diagnostic-results" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-clipboard2-pulse me-1"></i> Open Diagnostic Results
+        </a>
+      </div>
+    </div>
+
+    <!-- STATS BANNER -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3">
+        <div class="stat-card stat-total">
+          <div class="stat-dot" style="background:#0284c7"></div>
+          <div class="stat-value">{{ orders.length }}</div>
+          <div class="stat-label">Total Orders</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card stat-active">
+          <div class="stat-dot" style="background:#20c997"></div>
+          <div class="stat-value">{{ countByStatus('IN_PROGRESS') }}</div>
+          <div class="stat-label">In Progress</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card stat-pending">
+          <div class="stat-dot" style="background:#ffc107"></div>
+          <div class="stat-value">{{ countByStatus('ORDERED') }}</div>
+          <div class="stat-label">Ordered</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card stat-completed">
+          <div class="stat-dot" style="background:#6c757d"></div>
+          <div class="stat-value">{{ countByStatus('COMPLETED') }}</div>
+          <div class="stat-label">Completed</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATION PANEL -->
+    <div class="diag-notif-panel mb-4" *ngIf="notifications.length > 0 || true">
+
+      <!-- Panel Header -->
+      <div class="diag-notif-header" (click)="showNotifPanel = !showNotifPanel" style="cursor:pointer">
+        <div class="diag-notif-title">
+          <i class="bi bi-bell-fill me-2"></i>
+          Diagnostic Alerts
+          <span class="diag-notif-badge" *ngIf="unreadCount > 0">{{ unreadCount }} new</span>
+          <span class="diag-notif-badge diag-notif-badge-critical" *ngIf="criticalCount > 0">
+            {{ criticalCount }} critical
+          </span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <button class="diag-notif-action-btn" (click)="markAllRead(); $event.stopPropagation()" *ngIf="unreadCount > 0" title="Mark all read">
+            <i class="bi bi-check2-all"></i> Mark all read
+          </button>
+          <button class="diag-notif-action-btn diag-notif-btn-danger" (click)="clearAllNotifs(); $event.stopPropagation()" *ngIf="notifications.length > 0" title="Clear all">
+            <i class="bi bi-trash3"></i>
+          </button>
+          <i class="bi" [class.bi-chevron-down]="!showNotifPanel" [class.bi-chevron-up]="showNotifPanel"
+             style="color:rgba(255,255,255,.7);font-size:.85rem"></i>
+        </div>
+      </div>
+
+      <!-- Summary stats -->
+      <div class="diag-notif-stats" *ngIf="showNotifPanel">
+        <div class="diag-notif-stat">
+          <span class="dns-value">{{ notifications.length }}</span>
+          <span class="dns-label">Total</span>
+        </div>
+        <div class="diag-notif-stat dns-critical">
+          <span class="dns-value">{{ criticalCount }}</span>
+          <span class="dns-label">Critical</span>
+        </div>
+        <div class="diag-notif-stat dns-warning">
+          <span class="dns-value">{{ warningCount }}</span>
+          <span class="dns-label">Warnings</span>
+        </div>
+        <div class="diag-notif-stat dns-info">
+          <span class="dns-value">{{ infoCount }}</span>
+          <span class="dns-label">Info</span>
+        </div>
+        <div class="diag-notif-stat dns-unread">
+          <span class="dns-value">{{ unreadCount }}</span>
+          <span class="dns-label">Unread</span>
+        </div>
+      </div>
+
+      <!-- Filter pills -->
+      <div class="diag-notif-filters" *ngIf="showNotifPanel">
+        <button class="diag-notif-pill" [class.active]="notifFilter === 'all'"      (click)="notifFilter = 'all'">All</button>
+        <button class="diag-notif-pill dnp-critical" [class.active]="notifFilter === 'critical'" (click)="notifFilter = 'critical'">🔴 Critical</button>
+        <button class="diag-notif-pill dnp-warning"  [class.active]="notifFilter === 'warning'"  (click)="notifFilter = 'warning'">⚠️ Warning</button>
+        <button class="diag-notif-pill dnp-info"     [class.active]="notifFilter === 'info'"     (click)="notifFilter = 'info'">ℹ️ Info</button>
+        <button class="diag-notif-pill dnp-unread"   [class.active]="notifFilter === 'unread'"   (click)="notifFilter = 'unread'">🔵 Unread</button>
+      </div>
+
+      <!-- Notification list -->
+      <div class="diag-notif-list" *ngIf="showNotifPanel">
+
+        <!-- Empty state -->
+        <div class="diag-notif-empty" *ngIf="filteredNotifs.length === 0">
+          <i class="bi bi-bell-slash"></i>
+          <p>No {{ notifFilter === 'all' ? '' : notifFilter }} notifications</p>
+        </div>
+
+        <!-- Notification cards -->
+        <div *ngFor="let n of filteredNotifs"
+             class="diag-notif-card"
+             [class.dnc-critical]="n.severity === 'critical'"
+             [class.dnc-warning]="n.severity === 'warning'"
+             [class.dnc-info]="n.severity === 'info'"
+             [class.dnc-unread]="!n.read"
+             [class.dnc-acknowledged]="n.acknowledged">
+
+          <div class="dnc-accent" [style.background]="getNotifColor(n.severity)"></div>
+
+          <div class="dnc-icon" [style.background]="getNotifBg(n.severity)" [style.color]="getNotifColor(n.severity)">
+            <i class="bi" [ngClass]="getNotifIcon(n.type)"></i>
+            <span class="dnc-pulse" *ngIf="n.severity === 'critical' && !n.acknowledged"></span>
+          </div>
+
+          <div class="dnc-body">
+            <div class="dnc-top-row">
+              <span class="dnc-title">{{ n.message }}</span>
+              <span class="dnc-time">{{ getTimeAgo(n.timestamp) }}</span>
+            </div>
+            <div class="dnc-meta">
+              <span><i class="bi bi-flask me-1"></i>{{ n.testName }}</span>
+              <span class="mx-1">·</span>
+              <span><i class="bi bi-person me-1"></i>Patient #{{ n.userId }}</span>
+              <span class="mx-1">·</span>
+              <span><i class="bi bi-heart-pulse me-1"></i>{{ n.orderedBy }}</span>
+            </div>
+            <div class="dnc-details" *ngIf="n.details.length">
+              <div *ngFor="let d of n.details" class="dnc-detail-item">
+                <i class="bi bi-arrow-right-short"></i>{{ d }}
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+              <span class="dnc-severity-badge"
+                    [class.dsb-critical]="n.severity === 'critical'"
+                    [class.dsb-warning]="n.severity === 'warning'"
+                    [class.dsb-info]="n.severity === 'info'">
+                {{ n.severity === 'critical' ? '🔴 Critical' : n.severity === 'warning' ? '⚠️ Warning' : 'ℹ️ Info' }}
+              </span>
+              <span class="dnc-ack-badge" *ngIf="n.acknowledged">
+                <i class="bi bi-check2-all me-1"></i>Acknowledged
+              </span>
+              <button class="dnc-action-btn dnc-btn-ack" *ngIf="!n.acknowledged" (click)="acknowledgeNotif(n.id)">
+                <i class="bi bi-check2 me-1"></i>Acknowledge
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <!-- END NOTIFICATION PANEL -->
+
+
+    <!-- FORM CARD -->
+    <div class="diag-card mb-4">
+      <div class="diag-header p-4 d-flex align-items-center gap-3">
+        <div class="diag-id-badge"><i class="fas fa-flask"></i></div>
+        <div>
+          <div class="diag-ref">{{ editingId ? 'Edit Diagnostic Order' : 'New Diagnostic Order' }}</div>
+          <div class="diag-reason">Fields marked with an asterisk (*) are required</div>
+        </div>
+      </div>
+
+      <div class="p-4">
+        <form [formGroup]="form" (ngSubmit)="saveOrder()">
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">Order Type *</label>
+              <select class="form-select" formControlName="orderType" [class.is-invalid]="isFieldInvalid('orderType')">
+                <option value="">Select Type</option>
+                <option value="LABORATORY">Laboratory</option>
+                <option value="RADIOLOGY">Radiology</option>
+                <option value="ULTRASOUND">Ultrasound</option>
+                <option value="CT_SCAN">CT Scan</option>
+                <option value="MRI">MRI</option>
+                <option value="X_RAY">X-Ray</option>
+              </select>
+              <div class="invalid-feedback">Please select a diagnostic type.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">Test Name *</label>
+              <input class="form-control" placeholder="e.g. Complete Blood Count" formControlName="testName"
+                     [class.is-invalid]="isFieldInvalid('testName')"/>
+              <div class="invalid-feedback">Test name is required (2 to 100 characters).</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">Order Date *</label>
+              <input type="datetime-local" class="form-control" formControlName="orderDate"
+                     [max]="todayIso"
+                     [class.is-invalid]="isFieldInvalid('orderDate')"/>
+              <div class="invalid-feedback">Order date is required.</div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">Priority *</label>
+              <select class="form-select" formControlName="priority" [class.is-invalid]="isFieldInvalid('priority')">
+                <option value="">Select Priority</option>
+                <option value="ROUTINE">Routine</option>
+                <option value="URGENT">Urgent</option>
+                <option value="STAT">Stat</option>
+                <option value="EMERGENCY">Emergency</option>
+              </select>
+              <div class="invalid-feedback">Please set a priority level.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">Status *</label>
+              <select class="form-select" formControlName="status" [class.is-invalid]="isFieldInvalid('status')">
+                <option value="">Select Status</option>
+                <option value="ORDERED">Ordered</option>
+                <option value="SCHEDULED">Scheduled</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+              <div class="invalid-feedback">Please set an order status.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">Ordered By *</label>
+              <input class="form-control" placeholder="Doctor / Nurse name" formControlName="orderedBy"
+                     [class.is-invalid]="isFieldInvalid('orderedBy')"/>
+              <div class="invalid-feedback">Requester name is required.</div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">User ID *</label>
+              <input class="form-control" placeholder="Patient / User ID" formControlName="userId"
+                     [class.is-invalid]="isFieldInvalid('userId')"/>
+              <div class="invalid-feedback">User ID is required.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Consultation ID *</label>
+              <input class="form-control" placeholder="Consultation ID" formControlName="consultationId"
+                     [class.is-invalid]="isFieldInvalid('consultationId')"/>
+              <div class="invalid-feedback">Consultation ID is required.</div>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold small">Clinical Notes</label>
+            <textarea class="form-control" rows="3" placeholder="Optional clinical notes..."
+                      formControlName="clinicalNotes" [class.is-invalid]="isFieldInvalid('clinicalNotes')"></textarea>
+            <div class="invalid-feedback">Notes cannot exceed 1000 characters.</div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary px-4"
+                    [disabled]="form.invalid"
+                    style="background:var(--primary);border-color:var(--primary)">
+              {{ editingId ? 'Update Order' : 'Create Order' }}
+            </button>
+            <button type="button" class="btn btn-outline-secondary px-4" (click)="cancelEdit()">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar-section mb-4">
+      <div class="search-wrap mb-3">
+        <div class="search-input-group">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input"
+                 placeholder="Search by test name, doctor, type, patient ID…"
+                 [(ngModel)]="searchQuery" (ngModelChange)="onSearch()"/>
+          <button *ngIf="searchQuery" class="search-clear-btn" (click)="clearSearch()">✕</button>
+        </div>
+        <div class="search-results-count" *ngIf="searchQuery">
+          <span [class.no-results]="filteredOrders.length === 0">
+            {{ filteredOrders.length }} result{{ filteredOrders.length !== 1 ? 's' : '' }}
+          </span>
+          found for "<strong>{{ searchQuery }}</strong>"
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <button class="filter-pill" [class.active]="statusFilter === ''"            (click)="setFilter('')">All</button>
+          <button class="filter-pill filter-pill-active"    [class.active]="statusFilter === 'IN_PROGRESS'" (click)="setFilter('IN_PROGRESS')">In Progress</button>
+          <button class="filter-pill filter-pill-pending"   [class.active]="statusFilter === 'ORDERED'"     (click)="setFilter('ORDERED')">Ordered</button>
+          <button class="filter-pill filter-pill-completed" [class.active]="statusFilter === 'COMPLETED'"   (click)="setFilter('COMPLETED')">Completed</button>
+          <button class="filter-pill"                       [class.active]="statusFilter === 'CANCELLED'"   (click)="setFilter('CANCELLED')">Cancelled</button>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <span class="sort-label">Sort:</span>
+          <button class="sort-btn" [class.sort-btn-active]="sortField === 'testName'"  (click)="setSort('testName')">Test {{ getSortIcon('testName') }}</button>
+          <button class="sort-btn" [class.sort-btn-active]="sortField === 'orderDate'" (click)="setSort('orderDate')">Date {{ getSortIcon('orderDate') }}</button>
+          <button class="sort-btn" [class.sort-btn-active]="sortField === 'priority'"  (click)="setSort('priority')">Priority {{ getSortIcon('priority') }}</button>
+          <button class="sort-btn" [class.sort-btn-active]="sortField === 'status'"    (click)="setSort('status')">Status {{ getSortIcon('status') }}</button>
+          <button class="sort-btn" [class.sort-btn-active]="sortField === 'orderedBy'" (click)="setSort('orderedBy')">Doctor {{ getSortIcon('orderedBy') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMERGENCY ALERT BANNER -->
+    <div *ngIf="countByPriority('EMERGENCY') > 0" class="alert-banner d-flex align-items-center gap-3 mb-4">
+      <div class="alert-icon">🚨</div>
+      <div><strong>{{ countByPriority('EMERGENCY') }} Emergency Order(s)</strong> require immediate attention!</div>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div *ngIf="filteredOrders.length === 0" class="empty-state text-center py-5">
+      <div class="empty-icon-wrap mb-3">{{ searchQuery ? '🔍' : '🔬' }}</div>
+      <p class="fw-semibold text-muted">{{ searchQuery ? 'No orders match your search' : 'No diagnostic orders found' }}</p>
+      <button *ngIf="searchQuery" class="btn btn-sm btn-outline-secondary mt-2" (click)="clearSearch()">Clear search</button>
+    </div>
+
+    <!-- ORDERS GRID -->
+    <div class="row g-4">
+      <div *ngFor="let order of filteredOrders; let i = index"
+           class="col-12 col-md-6 col-xl-4 diag-card-wrap"
+           [style.animation-delay]="i * 0.05 + 's'">
+        <div class="diag-card h-100"
+             [class.diag-card-critical]="order.priority === 'EMERGENCY' || order.priority === 'STAT'">
+
+          <div *ngIf="order.priority === 'EMERGENCY'" class="critical-ribbon">🚨 Emergency</div>
+          <div *ngIf="order.priority === 'STAT'" class="critical-ribbon" style="background:#f97316">⚡ Stat</div>
+
+          <div class="diag-header p-3 d-flex justify-content-between align-items-start">
+            <div class="d-flex align-items-center gap-2">
+              <div class="diag-id-badge">{{ order.orderType?.charAt(0) }}</div>
+              <div>
+                <div class="diag-ref">{{ order.testName }}</div>
+                <div class="diag-reason">{{ order.orderType }}</div>
+              </div>
+            </div>
+            <span class="status-badge"
+                  [class.status-active]="order.status === 'IN_PROGRESS'"
+                  [class.status-pending]="order.status === 'ORDERED' || order.status === 'SCHEDULED'"
+                  [class.status-completed]="order.status === 'COMPLETED' || order.status === 'CANCELLED'">
+              {{ order.status | titlecase }}
+            </span>
+          </div>
+
+          <div class="p-3">
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <div class="metric-tile text-center">
+                  <div class="metric-emoji">⚡</div>
+                  <div class="metric-value">{{ order.priority }}</div>
+                  <div class="metric-label">Priority</div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="metric-tile text-center">
+                  <div class="metric-emoji">👤</div>
+                  <div class="metric-value small">{{ order.orderedBy }}</div>
+                  <div class="metric-label">Ordered By</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 mb-3 text-muted small">
+              <span>📅</span>
+              <span>{{ order.orderDate | date:'dd MMM yyyy HH:mm' }}</span>
+            </div>
+
+            <div *ngIf="order.clinicalNotes" class="mb-3 p-2 rounded"
+                 style="background:#f8fafc;font-size:.82rem;color:#64748b">
+              {{ order.clinicalNotes }}
+            </div>
+
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-primary flex-fill" (click)="editOrder(order)">✏️ Edit</button>
+              <button class="btn btn-sm btn-outline-danger flex-fill" (click)="deleteOrder(order)">🗑️ Delete</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     POPUP CONTAINER — fixe bas-droite, hors du flux de page
+     ══════════════════════════════════════════════════════════ -->
+<div class="popup-container">
+  <div
+    *ngFor="let p of popups; trackBy: trackPopupById"
+    class="popup-card"
+    [class.popup-critical]="p.severity === 'critical'"
+    [class.popup-warning]="p.severity  === 'warning'"
+    [class.popup-info]="p.severity     === 'info'"
+    [class.popup-leaving]="p.leaving"
+    (mouseenter)="pausePopup(p)"
+    (mouseleave)="resumePopup(p)"
+  >
+    <!-- Icône -->
+    <div class="popup-icon">
+      <i class="bi" [ngClass]="getNotifIcon(p.type)"></i>
+      <span class="popup-pulse" *ngIf="p.severity === 'critical'"></span>
+    </div>
+
+    <!-- Corps -->
+    <div class="popup-body">
+      <span class="popup-label">
+        {{ p.severity === 'critical' ? '🚨 Urgent' : p.severity === 'warning' ? '⚠️ Attention' : 'ℹ️ Info' }}
+      </span>
+      <p class="popup-message">{{ p.message }}</p>
+      <p class="popup-meta" *ngIf="p.testName || p.orderedBy">
+        <span *ngIf="p.testName"><i class="bi bi-flask"></i> {{ p.testName }}</span>
+        <span *ngIf="p.orderedBy" class="ms-2"><i class="bi bi-person"></i> {{ p.orderedBy }}</span>
+      </p>
+    </div>
+
+    <!-- Fermer -->
+    <button class="popup-close" (click)="closePopup(p)" aria-label="Fermer">
+      <i class="bi bi-x"></i>
+    </button>
+
+    <!-- Barre de progression -->
+    <div class="popup-progress">
+      <div
+        class="popup-progress-bar"
+        [style.animation-duration]="getPopupDuration(p.severity) + 'ms'"
+        [class.popup-progress-paused]="p.paused"
+      ></div>
+    </div>
+  </div>
+</div>

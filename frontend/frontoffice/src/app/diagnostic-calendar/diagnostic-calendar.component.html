@@ -1,0 +1,299 @@
+<div class="cal-page">
+  <div class="container py-4">
+
+    <!-- ══ HEADER ══ -->
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+      <div>
+        <p class="portal-label">Lab Management</p>
+        <h1 class="cal-title">📅 Diagnostic Calendar</h1>
+        <p class="cal-sub">Click a day to see orders · Click + to add one</p>
+      </div>
+      <button class="btn-add-order" (click)="openModal()">
+        <i class="bi bi-plus-lg me-1"></i> New Order
+      </button>
+    </div>
+
+    <!-- ══ LAYOUT : calendar + sidebar ══ -->
+    <div class="cal-layout">
+
+      <!-- ── CALENDAR ── -->
+      <div class="cal-card">
+
+        <!-- Month nav -->
+        <div class="cal-nav">
+          <div class="d-flex align-items-center gap-2">
+            <button class="cal-nav-btn" (click)="prevMonth()"><i class="bi bi-chevron-left"></i></button>
+            <button class="cal-nav-btn" (click)="nextMonth()"><i class="bi bi-chevron-right"></i></button>
+            <span class="cal-month-title">{{ monthLabel }}</span>
+          </div>
+          <button class="cal-today-btn" (click)="goToToday()">Today</button>
+        </div>
+
+        <!-- Weekdays -->
+        <div class="cal-weekdays">
+          <div *ngFor="let d of weekDays" class="cal-wd">{{ d }}</div>
+        </div>
+
+        <!-- Grid -->
+        <div class="cal-grid">
+          <ng-container *ngFor="let week of calendarWeeks">
+            <div
+              *ngFor="let day of week"
+              class="cal-day"
+              [class.other-month]="!day.isCurrentMonth"
+              [class.is-today]="day.isToday"
+              [class.is-selected]="day.isSelected"
+              [style.background]="day.orders.length ? getDayBg(day.orders) : ''"
+              [style.border-color]="day.orders.length ? getDayAccentColor(day.orders) : ''"
+              (click)="selectDay(day)"
+            >
+              <!-- Day number -->
+              <div class="day-num" [class.today-circle]="day.isToday">
+                {{ day.date.getDate() }}
+              </div>
+
+              <!-- Orders on this day -->
+              <div class="day-orders" *ngIf="day.orders.length > 0">
+                <div
+                  *ngFor="let o of day.orders.slice(0, 3)"
+                  class="day-order-chip"
+                  [style.border-left-color]="getPriorityColor(o.priority)"
+                  [title]="o.testName + ' · ' + o.priority"
+                >
+                  <span>{{ getTypeIcon(o.orderType) }}</span>
+                  <span class="chip-label">{{ o.testName }}</span>
+                </div>
+                <div class="chip-more" *ngIf="day.orders.length > 3">
+                  +{{ day.orders.length - 3 }} more
+                </div>
+              </div>
+
+              <!-- Quick add on hover -->
+              <button
+                class="day-quick-add"
+                (click)="openModal(day.date); $event.stopPropagation()"
+                title="Add order"
+              >+</button>
+
+            </div>
+          </ng-container>
+        </div>
+
+        <!-- Legend -->
+        <div class="cal-legend">
+          <span *ngFor="let l of [
+            {label:'Emergency', c:'#dc2626'}, {label:'Stat', c:'#f97316'},
+            {label:'Urgent', c:'#d97706'},    {label:'Routine', c:'#0284c7'}
+          ]" class="legend-item">
+            <span class="legend-dot" [style.background]="l.c"></span>{{ l.label }}
+          </span>
+        </div>
+
+      </div>
+      <!-- /calendar -->
+
+
+      <!-- ── SIDEBAR: selected day ── -->
+      <div class="cal-sidebar">
+
+        <!-- No day selected -->
+        <div class="sidebar-empty" *ngIf="!selectedDay">
+          <div class="se-icon">📋</div>
+          <p class="se-title">Select a day</p>
+          <p class="se-sub">Click any date to see its orders</p>
+        </div>
+
+        <!-- Day selected -->
+        <div *ngIf="selectedDay">
+
+          <!-- Sidebar header -->
+          <div class="sidebar-header">
+            <div>
+              <div class="sh-date">{{ selectedLabel }}</div>
+              <div class="sh-count">{{ selectedDay.orders.length }} order{{ selectedDay.orders.length !== 1 ? 's' : '' }}</div>
+            </div>
+            <button class="sh-add-btn" (click)="openModal(selectedDay.date)" title="Add order">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+          </div>
+
+          <!-- No orders on this day -->
+          <div class="sidebar-day-empty" *ngIf="selectedDay.orders.length === 0">
+            <span>🔬</span>
+            <p>No orders this day</p>
+            <button class="btn btn-sm btn-outline-primary rounded-pill"
+                    (click)="openModal(selectedDay.date)">+ Add order</button>
+          </div>
+
+          <!-- Orders list -->
+          <div class="sidebar-list" *ngIf="selectedDay.orders.length > 0">
+            <div
+              *ngFor="let o of selectedDay.orders"
+              class="sidebar-order"
+              [style.border-left-color]="getPriorityColor(o.priority)"
+            >
+              <!-- Top row -->
+              <div class="so-top">
+                <div class="so-icon" [style.background]="getPriorityBg(o.priority)">
+                  {{ getTypeIcon(o.orderType) }}
+                </div>
+                <div class="so-info">
+                  <div class="so-name">{{ o.testName }}</div>
+                  <div class="so-type">{{ o.orderType }}</div>
+                </div>
+                <div class="so-btns">
+                  <button class="so-btn so-edit" (click)="openModal(undefined, o)" title="Edit">
+                    <i class="bi bi-pencil-fill"></i>
+                  </button>
+                  <button class="so-btn so-del" (click)="deleteOrder(o, $event)" title="Delete">
+                    <i class="bi bi-trash3-fill"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Details -->
+              <div class="so-details">
+                <span class="so-badge" [style.background]="getPriorityBg(o.priority)" [style.color]="getPriorityColor(o.priority)">
+                  ⚡ {{ o.priority }}
+                </span>
+                <span class="so-badge" [style.color]="getStatusColor(o.status)">
+                  ● {{ o.status | titlecase }}
+                </span>
+              </div>
+
+              <div class="so-meta">
+                <span><i class="bi bi-person-fill me-1"></i>{{ o.orderedBy }}</span>
+                <span><i class="bi bi-person-badge me-1"></i>#{{ o.userId }}</span>
+              </div>
+
+              <div *ngIf="o.clinicalNotes" class="so-notes">
+                {{ o.clinicalNotes }}
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <!-- /sidebar -->
+
+    </div>
+    <!-- /cal-layout -->
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════
+     MODAL — Create / Edit Order
+     ══════════════════════════════════ -->
+<div class="modal-backdrop" [class.show]="showModal" (click)="closeModal()"></div>
+
+<div class="cal-modal" [class.show]="showModal">
+
+  <div class="cal-modal-header">
+    <div class="d-flex align-items-center gap-3">
+      <div class="modal-header-icon">{{ editingId ? '✏️' : '➕' }}</div>
+      <div>
+        <div class="modal-header-title">{{ editingId ? 'Edit Order' : 'New Diagnostic Order' }}</div>
+        <div class="modal-header-sub">Fields marked * are required</div>
+      </div>
+    </div>
+    <button class="modal-close" (click)="closeModal()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="cal-modal-body">
+    <form [formGroup]="form" (ngSubmit)="saveOrder()">
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="f-label">Order Type *</label>
+          <select class="form-select f-ctrl" formControlName="orderType" [class.is-invalid]="isFieldInvalid('orderType')">
+            <option value="">Select Type</option>
+            <option value="LABORATORY">🔬 Laboratory</option>
+            <option value="RADIOLOGY">☢️ Radiology</option>
+            <option value="ULTRASOUND">📡 Ultrasound</option>
+            <option value="CT_SCAN">🧠 CT Scan</option>
+            <option value="MRI">🧲 MRI</option>
+            <option value="X_RAY">🦴 X-Ray</option>
+          </select>
+          <div class="invalid-feedback">Required.</div>
+        </div>
+        <div class="col-md-6">
+          <label class="f-label">Test Name *</label>
+          <input class="form-control f-ctrl" placeholder="e.g. Complete Blood Count"
+                 formControlName="testName" [class.is-invalid]="isFieldInvalid('testName')"/>
+          <div class="invalid-feedback">Required (2–100 chars).</div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <label class="f-label">Order Date *</label>
+          <input type="date" class="form-control f-ctrl" formControlName="orderDate"
+                 [class.is-invalid]="isFieldInvalid('orderDate')"/>
+          <div class="invalid-feedback">Required.</div>
+        </div>
+        <div class="col-md-4">
+          <label class="f-label">Priority *</label>
+          <select class="form-select f-ctrl" formControlName="priority" [class.is-invalid]="isFieldInvalid('priority')">
+            <option value="">Select</option>
+            <option value="ROUTINE">Routine</option>
+            <option value="URGENT">Urgent</option>
+            <option value="STAT">Stat</option>
+            <option value="EMERGENCY">🚨 Emergency</option>
+          </select>
+          <div class="invalid-feedback">Required.</div>
+        </div>
+        <div class="col-md-4">
+          <label class="f-label">Status *</label>
+          <select class="form-select f-ctrl" formControlName="status" [class.is-invalid]="isFieldInvalid('status')">
+            <option value="">Select</option>
+            <option value="ORDERED">Ordered</option>
+            <option value="SCHEDULED">Scheduled</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+          <div class="invalid-feedback">Required.</div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <label class="f-label">Ordered By *</label>
+          <input class="form-control f-ctrl" placeholder="Doctor / Nurse"
+                 formControlName="orderedBy" [class.is-invalid]="isFieldInvalid('orderedBy')"/>
+          <div class="invalid-feedback">Required.</div>
+        </div>
+        <div class="col-md-4">
+          <label class="f-label">Patient ID *</label>
+          <input class="form-control f-ctrl" placeholder="Patient ID"
+                 formControlName="userId" [class.is-invalid]="isFieldInvalid('userId')"/>
+          <div class="invalid-feedback">Required.</div>
+        </div>
+        <div class="col-md-4">
+          <label class="f-label">Consultation ID *</label>
+          <input class="form-control f-ctrl" placeholder="Consultation ID"
+                 formControlName="consultationId" [class.is-invalid]="isFieldInvalid('consultationId')"/>
+          <div class="invalid-feedback">Required.</div>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="f-label">Clinical Notes</label>
+        <textarea class="form-control f-ctrl" rows="2" placeholder="Optional notes…"
+                  formControlName="clinicalNotes" [class.is-invalid]="isFieldInvalid('clinicalNotes')"></textarea>
+        <div class="invalid-feedback">Max 1000 characters.</div>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn-cancel" (click)="closeModal()">Cancel</button>
+        <button type="submit" class="btn-save">
+          {{ editingId ? '💾 Update' : '➕ Create Order' }}
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>

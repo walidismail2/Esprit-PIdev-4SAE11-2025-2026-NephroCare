@@ -1,0 +1,292 @@
+<!-- src/app/pages/dashboard/diagnostic-result/diagnostic-result.component.html -->
+<div class="min-h-screen bg-gray-50 px-4 py-8 font-outfit dark:bg-gray-900">
+  <div class="mx-auto max-w-7xl">
+
+    <!-- PAGE HEADER -->
+    <div class="mb-8">
+      <p class="text-theme-sm font-medium uppercase tracking-widest text-brand-500 mb-1">Lab Management</p>
+      <h1 class="text-title-md font-semibold text-gray-900 dark:text-white/90">Diagnostic Results</h1>
+    </div>
+
+    <!-- FORM CARD -->
+    <div class="mb-8 rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="flex items-center gap-3 border-b border-gray-100 px-6 py-5 dark:border-gray-800">
+        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-500/[0.12]">
+          <svg class="h-5 w-5 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9v10a2 2 0 01-2 2z"/>
+          </svg>
+        </span>
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-white/90">
+          {{ editingId ? 'Edit' : 'Add' }} Diagnostic Result
+        </h2>
+      </div>
+
+      <div class="p-6">
+        <form [formGroup]="form" (ngSubmit)="save()">
+
+          <!-- Row 1: Result Date / Order ID / Performed By -->
+          <div class="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
+
+            <div>
+              <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">
+                Result Date <span class="text-error-500">*</span>
+              </label>
+              <input type="datetime-local" formControlName="resultDate" [max]="todayIso"
+                     [ngClass]="fieldError('resultDate','required') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                     class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 outline-none transition
+                            focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10
+                            dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 dark:focus:bg-white/[0.03]"/>
+              <p *ngIf="fieldError('resultDate','required')" class="mt-1.5 text-xs text-error-600">Result date is required</p>
+            </div>
+
+            <div>
+              <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">
+                Order ID <span class="text-error-500">*</span>
+              </label>
+              <input type="text" formControlName="orderId" placeholder="Linked diagnostic order ID"
+                     [ngClass]="fieldError('orderId','required') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                     class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 placeholder-gray-400
+                            outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10
+                            dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 dark:focus:bg-white/[0.03]"/>
+              <p *ngIf="fieldError('orderId','required')" class="mt-1.5 text-xs text-error-600">Order ID is required</p>
+            </div>
+
+            <div>
+              <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">
+                Performed By <span class="text-error-500">*</span>
+              </label>
+              <input type="text" formControlName="performedBy" placeholder="Biologist / Radiologist name"
+                     [ngClass]="fieldError('performedBy','required') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                     class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 placeholder-gray-400
+                            outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10
+                            dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 dark:focus:bg-white/[0.03]"/>
+              <p *ngIf="fieldError('performedBy','required')" class="mt-1.5 text-xs text-error-600">Performed by is required</p>
+            </div>
+
+          </div>
+
+          <!-- Row 2: Result Values / Reference Range / Is Abnormal -->
+          <div class="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
+
+            <div>
+              <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">
+                Result Values <span class="text-error-500">*</span>
+              </label>
+              <input type="text" formControlName="resultValues" placeholder="e.g. Hemoglobin: 14 g/dL"
+                     [ngClass]="fieldError('resultValues','required') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                     class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 placeholder-gray-400
+                            outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10
+                            dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 dark:focus:bg-white/[0.03]"/>
+              <p *ngIf="fieldError('resultValues','required')" class="mt-1.5 text-xs text-error-600">Result values are required</p>
+            </div>
+
+            <div>
+              <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">
+                Reference Range <span class="text-error-500">*</span>
+              </label>
+              <input type="text" formControlName="referenceRange" placeholder="e.g. 12–16 g/dL"
+                     [ngClass]="fieldError('referenceRange','required') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                     class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 placeholder-gray-400
+                            outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10
+                            dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 dark:focus:bg-white/[0.03]"/>
+              <p *ngIf="fieldError('referenceRange','required')" class="mt-1.5 text-xs text-error-600">Reference range is required</p>
+            </div>
+
+            <!-- Is Abnormal toggle -->
+            <div>
+              <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">
+                Abnormal Result?
+              </label>
+              <label class="flex cursor-pointer items-center gap-3 mt-2.5">
+                <div class="relative">
+                  <input type="checkbox" formControlName="isAbnormal" class="sr-only peer"/>
+                  <div class="h-6 w-11 rounded-full bg-gray-200 peer-checked:bg-error-500
+                              transition-colors dark:bg-gray-700 dark:peer-checked:bg-error-500"></div>
+                  <div class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow
+                              transition-transform peer-checked:translate-x-5"></div>
+                </div>
+                <span class="text-theme-sm font-medium"
+                      [ngClass]="form.get('isAbnormal')?.value ? 'text-error-600 dark:text-error-400' : 'text-success-600 dark:text-success-400'">
+                  {{ form.get('isAbnormal')?.value ? '⚠ Abnormal' : '✓ Normal' }}
+                </span>
+              </label>
+            </div>
+
+          </div>
+
+          <!-- Row 3: Lab Findings / Image Interpretation -->
+          <div class="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+
+            <div>
+              <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Lab Findings</label>
+              <textarea formControlName="labFindings" rows="3" placeholder="Detailed laboratory findings..."
+                        [ngClass]="fieldError('labFindings','maxlength') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                        class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 placeholder-gray-400
+                               outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10
+                               dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 dark:focus:bg-white/[0.03] resize-none"></textarea>
+              <p class="mt-1 text-right text-xs text-gray-400">
+                {{ form.get('labFindings')?.value?.length || 0 }}/2000
+              </p>
+            </div>
+
+            <div>
+              <label class="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-400">Image Interpretation</label>
+              <textarea formControlName="imageInterpretation" rows="3" placeholder="Radiology / ultrasound interpretation..."
+                        [ngClass]="fieldError('imageInterpretation','maxlength') ? 'border-error-300 ring-4 ring-error-500/10' : 'border-gray-200 dark:border-gray-700'"
+                        class="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-theme-sm text-gray-800 placeholder-gray-400
+                               outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10
+                               dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 dark:focus:bg-white/[0.03] resize-none"></textarea>
+              <p class="mt-1 text-right text-xs text-gray-400">
+                {{ form.get('imageInterpretation')?.value?.length || 0 }}/2000
+              </p>
+            </div>
+
+          </div>
+
+          <!-- Actions -->
+          <div class="flex items-center gap-3">
+            <button type="submit" [disabled]="form.invalid"
+                    class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-2.5 text-theme-sm font-medium
+                           text-white shadow-theme-xs transition hover:bg-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-500/20
+                           disabled:cursor-not-allowed disabled:opacity-50">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+              {{ editingId ? 'Update' : 'Save' }}
+            </button>
+            <button type="button" (click)="cancel()"
+                    class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-2.5 text-theme-sm
+                           font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50
+                           dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03]">
+              Cancel
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+    <!-- TABLE CARD -->
+    <div class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="flex flex-col gap-4 border-b border-gray-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800">
+        <div class="flex items-center gap-3">
+          <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-500/[0.12]">
+            <svg class="h-5 w-5 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9v10a2 2 0 01-2 2z"/>
+            </svg>
+          </span>
+          <h2 class="text-lg font-semibold text-gray-800 dark:text-white/90">All Diagnostic Results</h2>
+        </div>
+        <div class="relative w-full sm:w-64">
+          <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+            <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
+            </svg>
+          </span>
+          <input type="text" placeholder="Search results..." [(ngModel)]="searchTerm" (input)="filterResults()"
+                 [ngModelOptions]="{standalone: true}"
+                 class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-4 text-theme-sm text-gray-700
+                        placeholder-gray-400 outline-none transition focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-500/10
+                        dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"/>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-theme-sm">
+          <thead>
+            <tr class="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/60">
+              <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap">Result Date</th>
+              <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap">Result Values</th>
+              <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap">Reference Range</th>
+              <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap">Abnormal</th>
+              <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap">Performed By</th>
+              <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap">Order ID</th>
+              <th class="px-5 py-3.5 font-medium text-gray-500 whitespace-nowrap">Lab Findings</th>
+              <th class="px-5 py-3.5 text-center font-medium text-gray-500 whitespace-nowrap">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+
+            <tr *ngFor="let r of filteredResults" class="group transition hover:bg-gray-50/60 dark:hover:bg-white/[0.02]">
+
+              <td class="px-5 py-4 text-gray-700 whitespace-nowrap dark:text-gray-300">
+                {{ r.resultDate ? (r.resultDate | date:'yyyy-MM-dd HH:mm') : '—' }}
+              </td>
+
+              <td class="px-5 py-4 font-medium text-gray-800 dark:text-white/90">
+                {{ r.resultValues }}
+              </td>
+
+              <td class="px-5 py-4 text-gray-600 dark:text-gray-400">
+                {{ r.referenceRange }}
+              </td>
+
+              <td class="px-5 py-4">
+                <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
+                      [ngClass]="abnormalClass(r.isAbnormal)">
+                  <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
+                  {{ r.isAbnormal ? 'Abnormal' : 'Normal' }}
+                </span>
+              </td>
+
+              <td class="px-5 py-4 text-gray-700 dark:text-gray-300">{{ r.performedBy }}</td>
+
+              <td class="px-5 py-4 font-mono text-xs text-gray-500 dark:text-gray-400">
+                {{ r.orderId ? (r.orderId | slice:0:8) + '…' : '—' }}
+              </td>
+
+              <td class="px-5 py-4 text-gray-600 dark:text-gray-400 max-w-xs truncate">
+                {{ r.labFindings || '—' }}
+              </td>
+
+              <td class="px-5 py-4">
+                <div class="flex items-center justify-center gap-2">
+                  <button (click)="edit(r)"
+                          class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5
+                                 text-xs font-medium text-gray-700 shadow-theme-xs transition
+                                 hover:border-brand-300 hover:text-brand-600
+                                 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    Edit
+                  </button>
+                  <button (click)="delete(r.id)"
+                          class="inline-flex items-center gap-1.5 rounded-lg border border-error-100 bg-error-50 px-3 py-1.5
+                                 text-xs font-medium text-error-600 shadow-theme-xs transition hover:bg-error-100
+                                 dark:border-error-500/20 dark:bg-error-500/10 dark:text-error-400">
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    Delete
+                  </button>
+                </div>
+              </td>
+
+            </tr>
+
+            <tr *ngIf="filteredResults.length === 0">
+              <td colspan="8" class="px-5 py-16 text-center">
+                <div class="flex flex-col items-center gap-3">
+                  <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-800">
+                    <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9v10a2 2 0 01-2 2z"/>
+                    </svg>
+                  </span>
+                  <p class="text-theme-sm font-medium text-gray-500 dark:text-gray-400">No diagnostic results found.</p>
+                </div>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,156 @@
+{
+  "realm": "nephro-realm",
+  "enabled": true,
+  "displayName": "NephroCare Realm",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "roles": {
+    "realm": [
+      { "name": "admin", "description": "Administrator" },
+      { "name": "doctor", "description": "Doctor" },
+      { "name": "nurse", "description": "Nurse" },
+      { "name": "pharmacist", "description": "Pharmacist" },
+      { "name": "lab-tech", "description": "Lab technician" },
+      { "name": "driver", "description": "Delivery driver" },
+      { "name": "patient", "description": "Patient" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "dialysis-service",
+      "name": "Dialysis Service",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "secret": "j0QkFqdtpGOdphdpd5Rh3QNrWO9zPGrv",
+      "redirectUris": [ "*" ],
+      "webOrigins": [ "*" ]
+    },
+    {
+      "clientId": "backoffice-ui",
+      "name": "Backoffice UI",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "http://localhost:4369/*",
+        "http://localhost:4200/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4369",
+        "http://localhost:4200"
+      ]
+    },
+    {
+      "clientId": "nephro-client",
+      "name": "Nephro Client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "http://localhost:4369/*",
+        "http://localhost:4200/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4369",
+        "http://localhost:4200"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin.user",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "email": "admin@nephrocare.local",
+      "credentials": [
+        { "type": "password", "value": "Admin@123", "temporary": false }
+      ],
+      "realmRoles": [ "admin" ]
+    },
+    {
+      "username": "doctor.user",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Doctor",
+      "lastName": "User",
+      "email": "doctor@nephrocare.local",
+      "credentials": [
+        { "type": "password", "value": "Doctor@123", "temporary": false }
+      ],
+      "realmRoles": [ "doctor" ]
+    },
+    {
+      "username": "nurse.user",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Nurse",
+      "lastName": "User",
+      "email": "nurse@nephrocare.local",
+      "credentials": [
+        { "type": "password", "value": "Nurse@123", "temporary": false }
+      ],
+      "realmRoles": [ "nurse" ]
+    },
+    {
+      "username": "patient.user",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Patient",
+      "lastName": "User",
+      "email": "patient@nephrocare.local",
+      "credentials": [
+        { "type": "password", "value": "Patient@123", "temporary": false }
+      ],
+      "realmRoles": [ "patient" ]
+    },
+    {
+      "username": "pharmacist.user",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Pharmacist",
+      "lastName": "User",
+      "email": "pharmacist@nephrocare.local",
+      "credentials": [
+        { "type": "password", "value": "Pharmacist@123", "temporary": false }
+      ],
+      "realmRoles": [ "pharmacist" ]
+    },
+    {
+      "username": "labtech.user",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Lab",
+      "lastName": "Tech",
+      "email": "labtech@nephrocare.local",
+      "credentials": [
+        { "type": "password", "value": "Labtech@123", "temporary": false }
+      ],
+      "realmRoles": [ "lab-tech" ]
+    },
+    {
+      "username": "driver.user",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Driver",
+      "lastName": "User",
+      "email": "driver@nephrocare.local",
+      "credentials": [
+        { "type": "password", "value": "Driver@123", "temporary": false }
+      ],
+      "realmRoles": [ "driver" ]
+    }
+  ]
+}

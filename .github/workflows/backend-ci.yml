@@ -1,0 +1,57 @@
+name: Backend CI
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - { name: "discovery-service", path: "backend/discovery-service", docker_path: "discovery-service" }
+          - { name: "config", path: "backend/config", docker_path: "config" }
+          - { name: "api-gateway", path: "backend/Api-Gateway", docker_path: "Api-Gateway" }
+          - { name: "user-service", path: "backend/user-service", docker_path: "user-service" }
+          - { name: "clinical-service", path: "backend/clinical", docker_path: "clinical" }
+          - { name: "diagnostic-service", path: "backend/diagnostic-service", docker_path: "diagnostic-service" }
+          - { name: "dialysis-service", path: "backend/dialysis-service", docker_path: "dialysis-service" }
+          - { name: "hospitalization-service", path: "backend/Hospitalization-service", docker_path: "Hospitalization-service" }
+          - { name: "order-service", path: "backend/order-service/order-service", docker_path: "order-service/order-service" }
+          - { name: "pharmacy-service", path: "backend/pharmacy-service", docker_path: "pharmacy-service" }
+          - { name: "monitoring-service", path: "backend/monitoring-service/monitoring-service", docker_path: "monitoring-service/monitoring-service" }
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Run unit tests
+        working-directory: ${{ matrix.service.path }}
+        run: mvn -B clean test
+
+      - name: Package application
+        working-directory: ${{ matrix.service.path }}
+        run: mvn -B -DskipTests package
+
+      - name: Build Docker image (validation only)
+        run: |
+          docker build \
+            -f backend/Dockerfile \
+            --build-arg SERVICE_PATH=${{ matrix.service.docker_path }} \
+            -t nephrocare/${{ matrix.service.name }}:ci-${{ github.run_number }} \
+            backend

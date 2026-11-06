@@ -1,0 +1,47 @@
+<!-- Show navbar and footer only if not on login/register -->
+<app-navbar *ngIf="showHeaderFooter()"></app-navbar>
+
+<router-outlet></router-outlet>
+
+<app-footer *ngIf="showHeaderFooter()"></app-footer>
+
+<!-- ═══════════════════════════════════════════
+     TOAST NOTIFICATIONS — floats over all pages
+     ═══════════════════════════════════════════ -->
+<div class="toast-container">
+  <div *ngFor="let t of toasts$ | async"
+       class="toast-card"
+       [class.toast-critical]="t.severity === 'critical'"
+       [class.toast-warning]="t.severity === 'warning'">
+
+    <div class="toast-stripe"></div>
+
+    <div class="toast-icon">
+      <svg *ngIf="t.severity === 'critical'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/>
+      </svg>
+      <svg *ngIf="t.severity === 'warning'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <span *ngIf="t.severity === 'critical'" class="toast-pulse"></span>
+    </div>
+
+    <div class="toast-content">
+      <div class="toast-title">{{ t.message }}</div>
+      <div class="toast-detail" *ngFor="let d of t.details">{{ d }}</div>
+    </div>
+
+    <button class="toast-close" (click)="notifService.dismissToast(t.id)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+
+    <div class="toast-progress"
+         [class.toast-progress-crit]="t.severity === 'critical'"
+         [class.toast-progress-warn]="t.severity === 'warning'">
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,394 @@
+<div class="stat-page">
+
+  <!-- ── HEADER ── -->
+  <div class="stat-header">
+    <div class="stat-header__icon"><i class="fas fa-chart-line"></i></div>
+    <div>
+      <p class="stat-header__sub">Back Office / Analytics</p>
+      <h2 class="stat-header__title">Stock Statistics</h2>
+    </div>
+    <div class="stat-header__actions">
+      <select class="range-select" [(ngModel)]="selectedRange" (change)="onRangeChange()">
+        <option value="7">Last 7 days</option>
+        <option value="14">Last 14 days</option>
+        <option value="30">Last 30 days</option>
+      </select>
+      <button class="btn-refresh" (click)="loadAll()">
+        <i class="fas fa-sync-alt" [class.fa-spin]="loading"></i> Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- ── LOADING ── -->
+  <div class="loading-overlay" *ngIf="loading">
+    <i class="fas fa-spinner fa-spin"></i>
+    <p>Loading statistics...</p>
+  </div>
+
+  <div *ngIf="!loading">
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- ROW 1 — KPI Cards                         -->
+    <!-- ══════════════════════════════════════════ -->
+    <div class="kpi-grid" *ngIf="stats">
+      <div class="kpi-card kpi--total">
+        <div class="kpi-icon"><i class="fas fa-pills"></i></div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ stats.total }}</span>
+          <span class="kpi-label">Total Medications</span>
+        </div>
+        <div class="kpi-trend"><i class="fas fa-database"></i></div>
+      </div>
+
+      <div class="kpi-card kpi--ok">
+        <div class="kpi-icon"><i class="fas fa-check-circle"></i></div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ stats.available }}</span>
+          <span class="kpi-label">In Stock</span>
+          <span class="kpi-pct">{{ stats.total ? (stats.available / stats.total * 100 | number:'1.0-0') : 0 }}%</span>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi--low">
+        <div class="kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ stats.low }}</span>
+          <span class="kpi-label">Low Stock</span>
+          <span class="kpi-pct">{{ stats.total ? (stats.low / stats.total * 100 | number:'1.0-0') : 0 }}%</span>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi--out">
+        <div class="kpi-icon"><i class="fas fa-times-circle"></i></div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ stats.out }}</span>
+          <span class="kpi-label">Out of Stock</span>
+          <span class="kpi-pct">{{ stats.total ? (stats.out / stats.total * 100 | number:'1.0-0') : 0 }}%</span>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi--moves">
+        <div class="kpi-icon"><i class="fas fa-exchange-alt"></i></div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ stats.totalMovements }}</span>
+          <span class="kpi-label">Total Movements</span>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi--in">
+        <div class="kpi-icon"><i class="fas fa-arrow-circle-down"></i></div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ stats.totalIn }}</span>
+          <span class="kpi-label">Total IN (units)</span>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi--outflow">
+        <div class="kpi-icon"><i class="fas fa-arrow-circle-up"></i></div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ stats.totalOut }}</span>
+          <span class="kpi-label">Total OUT (units)</span>
+        </div>
+      </div>
+
+      <div class="kpi-card" [class.kpi--positive]="getNetFlow() >= 0" [class.kpi--negative]="getNetFlow() < 0">
+        <div class="kpi-icon">
+          <i class="fas" [class.fa-trending-up]="getNetFlow() >= 0" [class.fa-trending-down]="getNetFlow() < 0"></i>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ netFlow >= 0 ? '+' : '' }}{{ netFlow }}</span>
+          <span class="kpi-label">Net Flow</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- ROW 2 — Pie Chart + Reasons               -->
+    <!-- ══════════════════════════════════════════ -->
+    <div class="row-2">
+
+      <!-- Donut Pie Chart -->
+      <div class="chart-card chart-pie">
+        <div class="chart-card-header">
+          <div class="chart-card-icon icon--blue"><i class="fas fa-chart-pie"></i></div>
+          <div>
+            <h3>Stock Distribution</h3>
+            <p>Inventory health overview</p>
+          </div>
+        </div>
+
+        <div class="pie-body">
+          <div class="pie-svg-wrap">
+            <svg viewBox="0 0 200 200">
+              <defs>
+                <linearGradient id="sg-ok"  x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#22c55e"/><stop offset="100%" style="stop-color:#16a34a"/>
+                </linearGradient>
+                <linearGradient id="sg-low" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#f59e0b"/><stop offset="100%" style="stop-color:#d97706"/>
+                </linearGradient>
+                <linearGradient id="sg-out" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#ef4444"/><stop offset="100%" style="stop-color:#dc2626"/>
+                </linearGradient>
+              </defs>
+              <circle cx="100" cy="100" r="80" fill="#f8fafc"/>
+              <ng-container *ngFor="let seg of pieSegments">
+                <path [attr.d]="seg.path" [attr.fill]="seg.gradient" stroke="white" stroke-width="2">
+                  <title>{{ seg.label }}: {{ seg.count }} ({{ seg.pct }}%)</title>
+                </path>
+              </ng-container>
+              <circle *ngIf="pieSegments.length === 0" cx="100" cy="100" r="80" fill="#e2e8f0"/>
+              <circle cx="100" cy="100" r="52" fill="white"/>
+              <text x="100" y="94" text-anchor="middle" class="pie-center-num">{{ stats?.total || 0 }}</text>
+              <text x="100" y="112" text-anchor="middle" class="pie-center-lbl">Total</text>
+            </svg>
+          </div>
+          <div class="pie-legend">
+            <div class="pie-legend-item" *ngFor="let seg of pieSegments">
+              <div class="pli-dot" [ngStyle]="{'background': seg.color}"></div>
+              <div class="pli-info">
+                <span class="pli-label">{{ seg.label }}</span>
+                <div class="pli-bar-wrap">
+                  <div class="pli-bar" [ngStyle]="{'width': seg.pct + '%', 'background': seg.color}"></div>
+                </div>
+              </div>
+              <div class="pli-right">
+                <span class="pli-count" [ngStyle]="{'color': seg.color}">{{ seg.count }}</span>
+                <span class="pli-pct">{{ seg.pct }}%</span>
+              </div>
+            </div>
+            <div *ngIf="pieSegments.length === 0" class="pie-empty">
+              <i class="fas fa-inbox"></i> No data
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reason Breakdown -->
+      <div class="chart-card chart-reasons">
+        <div class="chart-card-header">
+          <div class="chart-card-icon icon--purple"><i class="fas fa-tags"></i></div>
+          <div>
+            <h3>Movement Reasons</h3>
+            <p>Why stock changed</p>
+          </div>
+        </div>
+
+        <div class="reasons-body">
+          <div class="reason-row" *ngFor="let r of reasonBreakdown">
+            <div class="reason-meta">
+              <div class="reason-dot" [ngStyle]="{'background': r.color}"></div>
+              <span class="reason-label">{{ r.reason }}</span>
+            </div>
+            <div class="reason-bar-wrap">
+              <div class="reason-bar-track">
+                <div class="reason-bar-fill"
+                     [ngStyle]="{'width': (r.count / totalReasons * 100) + '%', 'background': r.color}">
+                </div>
+              </div>
+            </div>
+            <div class="reason-right">
+              <span class="reason-count">{{ r.count }}</span>
+              <span class="reason-pct">{{ (r.count / totalReasons * 100) | number:'1.0-0' }}%</span>
+            </div>
+          </div>
+
+          <div class="reasons-empty" *ngIf="reasonBreakdown.length === 0">
+            <i class="fas fa-inbox"></i> No movements yet
+          </div>
+
+          <div class="reasons-total">
+            <i class="fas fa-exchange-alt"></i>
+            <span>Total movements</span>
+            <strong>{{ movements.length }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- ROW 3 — Daily Activity Bar Chart          -->
+    <!-- ══════════════════════════════════════════ -->
+    <div class="chart-card chart-daily">
+      <div class="chart-card-header">
+        <div class="chart-card-icon icon--green"><i class="fas fa-chart-bar"></i></div>
+        <div>
+          <h3>Daily Stock Activity</h3>
+          <p>IN vs OUT over the selected period</p>
+        </div>
+        <div class="daily-legend">
+          <span class="dl-in"><i class="fas fa-circle"></i> IN</span>
+          <span class="dl-out"><i class="fas fa-circle"></i> OUT</span>
+        </div>
+      </div>
+
+      <div class="daily-chart">
+        <div class="daily-bars">
+          <div class="daily-col" *ngFor="let d of dailyActivity">
+            <div class="daily-bar-group">
+              <div class="daily-bar daily-bar--in"
+                   [style.height.%]="barHeight(d.inQty)"
+                   [title]="'IN: ' + d.inQty + ' units'">
+                <span class="bar-val-tip" *ngIf="d.inQty > 0">{{ d.inQty }}</span>
+              </div>
+              <div class="daily-bar daily-bar--out"
+                   [style.height.%]="barHeight(d.outQty)"
+                   [title]="'OUT: ' + d.outQty + ' units'">
+                <span class="bar-val-tip" *ngIf="d.outQty > 0">{{ d.outQty }}</span>
+              </div>
+            </div>
+            <span class="daily-label">{{ d.label }}</span>
+          </div>
+        </div>
+
+        <div class="daily-empty" *ngIf="dailyActivity.length === 0">
+          <i class="fas fa-chart-bar"></i>
+          <p>No activity data available.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- ROW 4 — Top Medications                   -->
+    <!-- ══════════════════════════════════════════ -->
+    <div class="chart-card chart-top">
+      <div class="chart-card-header">
+        <div class="chart-card-icon icon--orange"><i class="fas fa-fire"></i></div>
+        <div>
+          <h3>Top Medications by Activity</h3>
+          <p>Most frequently updated medications</p>
+        </div>
+      </div>
+
+      <div class="top-list">
+        <div class="top-item" *ngFor="let med of topMedications; let i = index">
+          <div class="top-rank" [class.rank-1]="i===0" [class.rank-2]="i===1" [class.rank-3]="i===2">
+            {{ i + 1 }}
+          </div>
+          <div class="top-info">
+            <div class="top-name">
+              {{ med.name }}
+              <span class="kidney-tag" *ngIf="med.isKidney">
+                <i class="fas fa-star"></i> Kidney
+              </span>
+            </div>
+            <div class="top-bar-wrap">
+              <div class="top-bar">
+                <div class="top-bar-in"   [style.width.%]="topBarWidth(med.inQty)"></div>
+                <div class="top-bar-out"  [style.width.%]="topBarWidth(med.outQty)"></div>
+              </div>
+            </div>
+          </div>
+          <div class="top-stats">
+            <span class="ts-moves"><i class="fas fa-exchange-alt"></i> {{ med.movements }}</span>
+            <span class="ts-in"><i class="fas fa-arrow-down"></i> +{{ med.inQty }}</span>
+            <span class="ts-out"><i class="fas fa-arrow-up"></i> -{{ med.outQty }}</span>
+          </div>
+        </div>
+
+        <div class="top-empty" *ngIf="topMedications.length === 0">
+          <i class="fas fa-inbox"></i>
+          <p>No medication activity yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- ROW 5 — Current Stock Table               -->
+    <!-- ══════════════════════════════════════════ -->
+    <div class="chart-card chart-table">
+      <div class="chart-card-header">
+        <div class="chart-card-icon icon--teal"><i class="fas fa-table"></i></div>
+        <div>
+          <h3>Current Stock Status</h3>
+          <p>All medications at a glance</p>
+        </div>
+        <div class="table-counts">
+          <span class="tc tc--ok">{{ stats?.available || 0 }} OK</span>
+          <span class="tc tc--low">{{ stats?.low || 0 }} Low</span>
+          <span class="tc tc--out">{{ stats?.out || 0 }} Out</span>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Medication</th>
+              <th>Dosage</th>
+              <th>Route</th>
+              <th>Quantity</th>
+              <th>Stock Level</th>
+              <th>Status</th>
+              <th>Expiry</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let med of medications; trackBy: trackByMedication"
+                [class.row--out]="stockLevel(med.quantity) === 'out'"
+                [class.row--low]="stockLevel(med.quantity) === 'low'">
+              <td>
+                <div class="med-cell">
+                  <div class="med-icon" [class.med-icon--kidney]="KIDNEY_MEDS.includes(med.medicationName)">
+                    <i class="fas fa-capsules"></i>
+                  </div>
+                  <div>
+                    <span>{{ med.medicationName }}</span>
+                    <span class="kidney-tag" *ngIf="KIDNEY_MEDS.includes(med.medicationName)">
+                      <i class="fas fa-star"></i>
+                    </span>
+                  </div>
+                </div>
+              </td>
+              <td>{{ med.dosage || '—' }}</td>
+              <td>{{ med.route || '—' }}</td>
+              <td>
+                <strong [class.text-danger]="stockLevel(med.quantity) === 'out'"
+                        [class.text-warning]="stockLevel(med.quantity) === 'low'"
+                        [class.text-success]="stockLevel(med.quantity) === 'ok'">
+                  {{ med.quantity }}
+                </strong>
+              </td>
+              <td>
+                <div class="stock-bar-wrap">
+                  <div class="stock-bar">
+                    <div class="stock-bar-fill"
+                         [style.width.%]="med.quantity && med.quantity > 100 ? 100 : (med.quantity || 0)"
+                         [class.fill-ok]="stockLevel(med.quantity) === 'ok'"
+                         [class.fill-low]="stockLevel(med.quantity) === 'low'"
+                         [class.fill-out]="stockLevel(med.quantity) === 'out'">
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="status-badge"
+                      [class.sb--ok]="stockLevel(med.quantity) === 'ok'"
+                      [class.sb--low]="stockLevel(med.quantity) === 'low'"
+                      [class.sb--out]="stockLevel(med.quantity) === 'out'">
+                  <i class="fas"
+                     [class.fa-check-circle]="stockLevel(med.quantity) === 'ok'"
+                     [class.fa-exclamation-triangle]="stockLevel(med.quantity) === 'low'"
+                     [class.fa-times-circle]="stockLevel(med.quantity) === 'out'">
+                  </i>
+                  {{ stockLevel(med.quantity) === 'ok' ? 'In Stock' :
+                     stockLevel(med.quantity) === 'low' ? 'Low Stock' : 'Out of Stock' }}
+                </span>
+              </td>
+             <td [class.text-danger]="isExpired(med.endDate)">
+  {{ med.endDate | date:'mediumDate' }}
+</td>
+            </tr>
+            <tr *ngIf="medications.length === 0">
+              <td colspan="7" class="empty-row">
+                <i class="fas fa-pills"></i>
+                <p>No medications found.</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>

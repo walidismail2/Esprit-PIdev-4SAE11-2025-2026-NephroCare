@@ -1,0 +1,28 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+
+  cloud:
+    config:
+      server:
+        native:
+          # reads configs files from the classpath:/configs folder
+          search-locations: classpath:/configs
+  profiles:
+    active: native   # "native" = read from filesystem/classpath (no git needed)
+
+# Register configs-server itself to Eureka
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://discovery-service:8761/eureka/}
+
+# Expose health endpoint so Docker can health-check it
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

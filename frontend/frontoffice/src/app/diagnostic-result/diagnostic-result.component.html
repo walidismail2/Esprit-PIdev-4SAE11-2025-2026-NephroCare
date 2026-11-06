@@ -1,0 +1,290 @@
+<div class="diag-page py-5">
+  <div class="container">
+
+    <!-- PAGE HEADER -->
+    <div class="mb-4">
+      <p class="portal-label">Lab Management</p>
+      <h1 class="page-title">Diagnostic Results</h1>
+      <p class="page-subtitle">View and manage all diagnostic examination results</p>
+    </div>
+
+    <!-- STATS BANNER -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-4">
+        <div class="stat-card stat-total">
+          <div class="stat-dot" style="background:#0284c7"></div>
+          <div class="stat-value">{{ totalCount }}</div>
+          <div class="stat-label">Total Results</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="stat-card stat-active">
+          <div class="stat-dot" style="background:#ef4444"></div>
+          <div class="stat-value">{{ abnormalCount }}</div>
+          <div class="stat-label">Abnormal</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="stat-card stat-completed">
+          <div class="stat-dot" style="background:#20c997"></div>
+          <div class="stat-value">{{ normalCount }}</div>
+          <div class="stat-label">Normal</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMERGENCY ALERT BANNER -->
+    <div *ngIf="abnormalCount > 0" class="alert-banner d-flex align-items-center gap-3 mb-4">
+      <div class="alert-icon">⚠️</div>
+      <div>
+        <strong>{{ abnormalCount }} Abnormal Result(s)</strong> require medical review!
+      </div>
+    </div>
+
+    <!-- FORM CARD -->
+    <div class="diag-card mb-4">
+      <div class="diag-header p-4 d-flex align-items-center gap-3">
+        <div class="diag-id-badge"><i class="fas fa-microscope"></i></div>
+        <div>
+          <div class="diag-ref">{{ editingId ? 'Edit Diagnostic Result' : 'New Diagnostic Result' }}</div>
+          <div class="diag-reason">Fields marked with an asterisk (*) are required</div>
+        </div>
+      </div>
+
+      <div class="p-4">
+        <form [formGroup]="form" (ngSubmit)="saveResult()">
+
+          <!-- Row 1: Result Date / Order ID / Performed By -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">Result Date *</label>
+              <input type="datetime-local" class="form-control" formControlName="resultDate"
+                     [max]="todayIso"
+                     [class.is-invalid]="isFieldInvalid('resultDate')"/>
+              <div class="invalid-feedback">Result date is required.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">Order ID *</label>
+              <input type="text" class="form-control" placeholder="Linked diagnostic order ID"
+                     formControlName="orderId"
+                     [class.is-invalid]="isFieldInvalid('orderId')"/>
+              <div class="invalid-feedback">Order ID is required.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">Performed By *</label>
+              <input type="text" class="form-control" placeholder="Biologist / Radiologist name"
+                     formControlName="performedBy"
+                     [class.is-invalid]="isFieldInvalid('performedBy')"/>
+              <div class="invalid-feedback">Performer name is required.</div>
+            </div>
+          </div>
+
+          <!-- Row 2: Result Values / Reference Range / Is Abnormal -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">Result Values *</label>
+              <input type="text" class="form-control" placeholder="e.g. Hemoglobin: 14 g/dL"
+                     formControlName="resultValues"
+                     [class.is-invalid]="isFieldInvalid('resultValues')"/>
+              <div class="invalid-feedback">Result values are required.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">Reference Range *</label>
+              <input type="text" class="form-control" placeholder="e.g. 12–16 g/dL"
+                     formControlName="referenceRange"
+                     [class.is-invalid]="isFieldInvalid('referenceRange')"/>
+              <div class="invalid-feedback">Reference range is required.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small d-block">Abnormal Result?</label>
+              <div class="form-check form-switch mt-2">
+                <input class="form-check-input" type="checkbox" role="switch"
+                       formControlName="isAbnormal" id="isAbnormalSwitch"
+                       style="width:2.5em;height:1.3em;cursor:pointer"/>
+                <label class="form-check-label fw-semibold ms-2" for="isAbnormalSwitch"
+                       [style.color]="form.get('isAbnormal')?.value ? '#dc2626' : '#16a34a'">
+                  {{ form.get('isAbnormal')?.value ? '⚠️ Abnormal' : '✅ Normal' }}
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 3: Lab Findings / Image Interpretation -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Lab Findings</label>
+              <textarea class="form-control" rows="3"
+                        placeholder="Detailed laboratory findings..."
+                        formControlName="labFindings"
+                        [class.is-invalid]="isFieldInvalid('labFindings')"></textarea>
+              <div class="invalid-feedback">Max 2000 characters.</div>
+              <div class="text-end text-muted" style="font-size:.75rem">
+                {{ getLabFindingsLength() }}/2000
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Image Interpretation</label>
+              <textarea class="form-control" rows="3"
+                        placeholder="Radiology / ultrasound interpretation..."
+                        formControlName="imageInterpretation"
+                        [class.is-invalid]="isFieldInvalid('imageInterpretation')"></textarea>
+              <div class="invalid-feedback">Max 2000 characters.</div>
+              <div class="text-end text-muted" style="font-size:.75rem">
+                {{ getImageInterpretationLength() }}/2000
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary px-4"
+                    [disabled]="form.invalid"
+                    style="background:var(--primary);border-color:var(--primary)">
+              {{ editingId ? 'Update Result' : 'Save Result' }}
+            </button>
+            <button type="button" class="btn btn-outline-secondary px-4" (click)="cancelEdit()">
+              Cancel
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar-section mb-4">
+      <div class="search-wrap mb-3">
+        <div class="search-input-group">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input"
+                 placeholder="Search by values, reference range, performer, order ID…"
+                 [(ngModel)]="searchQuery" (ngModelChange)="onSearch()"/>
+          <button *ngIf="searchQuery" class="search-clear-btn" (click)="clearSearch()">✕</button>
+        </div>
+        <div class="search-results-count" *ngIf="searchQuery">
+          <span [class.no-results]="filteredResults.length === 0">
+            {{ filteredResults.length }} result{{ filteredResults.length !== 1 ? 's' : '' }}
+          </span>
+          found for "<strong>{{ searchQuery }}</strong>"
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+        <!-- Filter pills -->
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <button class="filter-pill" [class.active]="abnormalFilter === ''"
+                  (click)="setAbnormalFilter('')">All</button>
+          <button class="filter-pill" [class.active]="abnormalFilter === 'true'"
+                  (click)="setAbnormalFilter('true')"
+                  style="--pill-active-bg:#ef4444">⚠️ Abnormal</button>
+          <button class="filter-pill filter-pill-active" [class.active]="abnormalFilter === 'false'"
+                  (click)="setAbnormalFilter('false')">✅ Normal</button>
+        </div>
+        <!-- Sort buttons -->
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <span class="sort-label">Sort:</span>
+          <button class="sort-btn" [class.sort-btn-active]="sortField === 'resultDate'"
+                  (click)="setSort('resultDate')">Date {{ getSortIcon('resultDate') }}</button>
+          <button class="sort-btn" [class.sort-btn-active]="sortField === 'performedBy'"
+                  (click)="setSort('performedBy')">Performer {{ getSortIcon('performedBy') }}</button>
+          <button class="sort-btn" [class.sort-btn-active]="sortField === 'resultValues'"
+                  (click)="setSort('resultValues')">Values {{ getSortIcon('resultValues') }}</button>
+          <button class="sort-btn" [class.sort-btn-active]="sortField === 'orderId'"
+                  (click)="setSort('orderId')">Order ID {{ getSortIcon('orderId') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div *ngIf="filteredResults.length === 0" class="empty-state text-center py-5">
+      <div class="empty-icon-wrap mb-3">{{ searchQuery ? '🔍' : '🔬' }}</div>
+      <p class="fw-semibold text-muted">
+        {{ searchQuery ? 'No results match your search' : 'No diagnostic results found' }}
+      </p>
+      <button *ngIf="searchQuery" class="btn btn-sm btn-outline-secondary mt-2"
+              (click)="clearSearch()">Clear search</button>
+    </div>
+
+    <!-- RESULTS GRID -->
+    <div class="row g-4">
+      <div *ngFor="let result of filteredResults; let i = index"
+           class="col-12 col-md-6 col-xl-4 diag-card-wrap"
+           [style.animation-delay]="i * 0.05 + 's'">
+
+        <div class="diag-card h-100"
+             [class.diag-card-critical]="result.isAbnormal">
+
+          <!-- Critical ribbon -->
+          <div *ngIf="result.isAbnormal" class="critical-ribbon">⚠️ Abnormal Result</div>
+
+          <!-- Card header -->
+          <div class="diag-header p-3 d-flex justify-content-between align-items-start">
+            <div class="d-flex align-items-center gap-2">
+              <div class="diag-id-badge">🔬</div>
+              <div>
+                <div class="diag-ref">{{ result.resultValues }}</div>
+                <div class="diag-reason">Ref: {{ result.referenceRange }}</div>
+              </div>
+            </div>
+            <span class="status-badge"
+                  [class.status-active]="result.isAbnormal"
+                  [class.status-completed]="!result.isAbnormal">
+              {{ result.isAbnormal ? 'Abnormal' : 'Normal' }}
+            </span>
+          </div>
+
+          <!-- Card body -->
+          <div class="p-3">
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <div class="metric-tile text-center">
+                  <div class="metric-emoji">👨‍⚕️</div>
+                  <div class="metric-value small">{{ result.performedBy }}</div>
+                  <div class="metric-label">Performed By</div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="metric-tile text-center">
+                  <div class="metric-emoji">🔗</div>
+                  <div class="metric-value small" style="font-size:.75rem;font-family:monospace">
+                    {{ result.orderId | slice:0:8 }}…
+                  </div>
+                  <div class="metric-label">Order ID</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Date -->
+            <div class="d-flex align-items-center gap-2 mb-3 text-muted small">
+              <span>📅</span>
+              <span>{{ result.resultDate | date:'dd MMM yyyy HH:mm' }}</span>
+            </div>
+
+            <!-- Lab Findings -->
+            <div *ngIf="result.labFindings" class="mb-2 p-2 rounded"
+                 style="background:#f8fafc;font-size:.82rem;color:#64748b">
+              <strong style="font-size:.72rem;text-transform:uppercase;color:#94a3b8">Lab Findings</strong><br>
+              {{ result.labFindings }}
+            </div>
+
+            <!-- Image Interpretation -->
+            <div *ngIf="result.imageInterpretation" class="mb-3 p-2 rounded"
+                 style="background:#f8fafc;font-size:.82rem;color:#64748b">
+              <strong style="font-size:.72rem;text-transform:uppercase;color:#94a3b8">Image Interpretation</strong><br>
+              {{ result.imageInterpretation }}
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-primary flex-fill"
+                      (click)="editResult(result)">✏️ Edit</button>
+              <button class="btn btn-sm btn-outline-danger flex-fill"
+                      (click)="deleteResult(result)">🗑️ Delete</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

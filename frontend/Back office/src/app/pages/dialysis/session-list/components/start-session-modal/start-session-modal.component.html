@@ -1,0 +1,62 @@
+<app-modal
+        [open]="open"
+        title="Start Session (Pre-Dialysis) - TODAY ONLY"
+        width="md"
+        [busy]="busy"
+        (closed)="closed.emit()"
+>
+    <div *ngIf="treatment" class="mb-4 rounded border border-stroke p-4 dark:border-strokedark">
+        <p class="text-sm text-gray-700 dark:text-gray-200">
+            Access Type: <span class="font-medium">{{ treatment.vascularAccessType }}</span>
+        </p>
+
+        <label class="mt-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+            <input type="checkbox" [(ngModel)]="accessConfirmed" />
+            I have verified the access is functional <span class="text-red-600">*</span>
+        </label>
+
+        <div *ngIf="attempted && !accessConfirmed" class="mt-1 text-sm text-red-600">
+            You must confirm the access is functional.
+        </div>
+
+        <p class="mt-2 text-xs text-gray-500">
+            Session day is fixed to: <span class="font-medium">{{ todayStr }}</span>
+        </p>
+    </div>
+
+    <div class="mb-4">
+        <label class="mb-2 block text-black dark:text-white">Shift</label>
+        <div class="w-full rounded border border-stroke py-3 px-5 dark:border-form-strokedark dark:bg-form-input">
+            <span class="font-medium text-black dark:text-white">{{ shift }}</span>
+        </div>
+        <p class="mt-1 text-xs text-gray-500">Shift comes from the confirmed schedule.</p>
+    </div>
+
+    <div class="mb-4">
+        <label class="mb-2 block text-black dark:text-white">Weight Before (kg) <span class="text-red-600">*</span></label>
+        <input type="number" [(ngModel)]="weightBefore" min="1" max="500"
+               class="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input" />
+        <div *ngIf="attempted && (weightBefore == null || weightBefore <= 0 || weightBefore > 500)" class="mt-1 text-sm text-red-600">
+            Weight must be between 1 and 500.
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <label class="mb-2 block text-black dark:text-white">Blood Pressure (optional)</label>
+        <input type="text" [(ngModel)]="preBP" placeholder="120/80"
+               class="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input" />
+        <div *ngIf="attempted && bpInvalid()" class="mt-1 text-sm text-red-600">
+            Format must be like 120/80.
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <label class="mb-2 block text-black dark:text-white">Complications (optional)</label>
+        <input type="text" [(ngModel)]="complications"
+               class="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input" />
+    </div>
+
+    <app-button size="md" variant="primary" [disabled]="busy || invalid()" (btnClick)="onSubmit()">
+        Start Session (Today)
+    </app-button>
+</app-modal>

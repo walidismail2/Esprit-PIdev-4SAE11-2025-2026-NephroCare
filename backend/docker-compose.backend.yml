@@ -1,0 +1,269 @@
+x-backend-env: &backend-env
+  SPRING_PROFILES_ACTIVE: docker
+  DB_USER: ${MYSQL_USER}
+  DB_PASS: ${MYSQL_PASSWORD}
+  SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+  SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+  EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery-service:8761/eureka/
+  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/nephro-realm
+  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8180/realms/nephro-realm/protocol/openid-connect/certs
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: mysql
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./infra/mysql/init:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u${MYSQL_USER} -p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    command: start-dev --http-port=8180 --import-realm
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    volumes:
+      - ../k8s/keycloak/nephro-realm-import.json:/opt/keycloak/data/import/nephro-realm-import.json:ro
+    ports:
+      - "8180:8180"
+    restart: unless-stopped
+
+  discovery-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_PATH: discovery-service
+    environment:
+      <<: *backend-env
+    ports:
+      - "8761:8761"
+    restart: unless-stopped
+
+  config-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_PATH: config
+    environment:
+      <<: *backend-env
+    ports:
+      - "8888:8888"
+    depends_on:
+      discovery-service:
+        condition: service_started
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_PATH: Api-Gateway
+    environment:
+      <<: *backend-env
+    ports:
+      - "8070:8070"
+    depends_on:
+      discovery-service:
+        condition: service_started
+      config-server:
+        condition: service_started
+    restart: unless-stopped
+
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_PATH: user-service
+    environment:
+      <<: *backend-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/nephro_users_db?createDatabaseIfNotExist=true
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/nephro-realm
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8180/realms/nephro-realm/protocol/openid-connect/certs
+    ports:
+      - "8082:8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    restart: unless-stopped
+
+  clinical-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_PATH: clinical
+    environment:
+      <<: *backend-env
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/clinical_db?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false
+      USER_SERVICE_BASE_URL: http://user-service:8082/api/users
+    ports:
+      - "8079:8079"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      config-server:
+        condition: service_started
+      discovery-service:
+        condition: service_started
+    restart: unless-stopped
+
+  diagnostic-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_PATH: diagnostic-service
+    environment:
+      <<: *backend-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/diagnostic_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+    ports:
+      - "8778:8778"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+      config-server:
+        condition: service_started
+    restart: unless-stopped
+
+  dialysis-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_PATH: dialysis-service
+    environment:
+      <<: *backend-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/dialysis_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/nephro-realm
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8180/realms/nephro-realm/protocol/openid-connect/certs
+      KEYCLOAK_AUTH_SERVER_URL: http://keycloak:8180
+    ports:
+      - "8075:8075"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+      config-server:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    restart: unless-stopped
+
+  hospitalization-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_PATH: Hospitalization-service
+    environment:
+      <<: *backend-env
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/hospitalization_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+    ports:
+      - "8076:8076"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      config-server:
+        condition: service_started
+      discovery-service:
+        condition: service_started
+    restart: unless-stopped
+
+  order-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_PATH: order-service/order-service
+    environment:
+      <<: *backend-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/order_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      PHARMACY_SERVICE_BASE_URL: http://pharmacy-service:8087
+    ports:
+      - "8089:8089"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+      config-server:
+        condition: service_started
+    restart: unless-stopped
+
+  pharmacy-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_PATH: pharmacy-service
+    environment:
+      <<: *backend-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pharmacy_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+    ports:
+      - "8087:8087"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+      config-server:
+        condition: service_started
+    restart: unless-stopped
+
+  monitoring-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_PATH: monitoring-service/monitoring-service
+    environment:
+      <<: *backend-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/monitoring_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    ports:
+      - "8799:8799"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+    restart: unless-stopped
+
+  kidney-ai:
+    build:
+      context: ../kidney-ai
+      dockerfile: Dockerfile
+    environment:
+      MODEL_PATH: /models/best_cnn_kidney.keras
+    volumes:
+      - ../Kidney Project IA/kidney_model_improved:/models:ro
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+volumes:
+  mysql_data:

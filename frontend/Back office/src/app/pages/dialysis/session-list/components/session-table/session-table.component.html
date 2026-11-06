@@ -1,0 +1,117 @@
+<div class="px-6 pb-2 pt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex gap-2 items-center">
+        <label class="text-sm text-gray-600 dark:text-gray-300">Status:</label>
+        <select [(ngModel)]="statusFilter" (ngModelChange)="onFiltersChanged()"
+                class="rounded border border-stroke px-3 py-2 text-sm dark:border-strokedark dark:bg-form-input">
+            <option value="ALL">All</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="COMPLETED">Completed</option>
+        </select>
+
+        <label class="ml-3 text-sm text-gray-600 dark:text-gray-300">Date:</label>
+        <select [(ngModel)]="dateFilter" (ngModelChange)="onFiltersChanged()"
+                class="rounded border border-stroke px-3 py-2 text-sm dark:border-strokedark dark:bg-form-input">
+            <option value="ALL">All</option>
+            <option value="TODAY">Today</option>
+        </select>
+    </div>
+
+    <div class="flex gap-2 items-center">
+        <label class="text-sm text-gray-600 dark:text-gray-300">Search:</label>
+        <input [(ngModel)]="searchText" (ngModelChange)="onFiltersChanged()"
+               placeholder="BP / complications / date / KtV / URR / weight"
+               class="rounded border border-stroke px-3 py-2 text-sm dark:border-strokedark dark:bg-form-input" />
+    </div>
+</div>
+
+<div class="p-6">
+    <div *ngIf="loading" class="text-sm text-gray-500 dark:text-gray-300">Loading sessions...</div>
+
+    <ng-container *ngIf="!loading">
+        <ng-container *ngIf="sessions.length > 0; else emptyState">
+            <div class="max-w-full overflow-x-auto">
+                <table class="w-full table-auto">
+                    <thead>
+                    <tr class="bg-gray-2 text-left dark:bg-meta-4">
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">Date</th>
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">Weight (Before)</th>
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">Weight (After)</th>
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">UF Volume</th>
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">URR</th>
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">spKt/V</th>
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">eKt/V</th>
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">BP</th>
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">Complications</th>
+                        <th class="py-4 px-4 font-medium text-black dark:text-white">Status</th>
+                        <th *ngIf="canSeeActionsColumn" class="py-4 px-4 font-medium text-black dark:text-white">Actions</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    <tr *ngFor="let s of sessions" class="border-b border-[#eee] dark:border-strokedark">
+                        <td class="py-5 px-4"><p class="text-black dark:text-white">{{ s.sessionDate ? (s.sessionDate | date:'short') : '-' }}</p></td>
+                        <td class="py-5 px-4"><p class="text-black dark:text-white">{{ s.weightBefore != null ? (s.weightBefore + ' kg') : '-' }}</p></td>
+                        <td class="py-5 px-4"><p class="text-black dark:text-white">{{ s.weightAfter != null ? (s.weightAfter + ' kg') : '-' }}</p></td>
+                        <td class="py-5 px-4"><p class="text-black dark:text-white">{{ s.ultrafiltrationVolume != null ? (s.ultrafiltrationVolume + ' L') : '-' }}</p></td>
+
+                        <td class="py-5 px-4"><p class="text-black dark:text-white">{{ s.urr != null ? (s.urr + ' %') : '-' }}</p></td>
+
+                        <td class="py-5 px-4">
+                            <p class="text-black dark:text-white">{{ s.spKtV != null ? s.spKtV : '-' }}</p>
+                            <p *ngIf="s.spKtV != null && s.spKtV < 1.2" class="mt-1 text-xs text-red-600">
+                                Inadequate Dialysis (spKt/V &lt; 1.2)
+                            </p>
+                        </td>
+
+                        <td class="py-5 px-4"><p class="text-black dark:text-white">{{ s.eKtV != null ? s.eKtV : '-' }}</p></td>
+                        <td class="py-5 px-4"><p class="text-black dark:text-white">{{ s.preBloodPressure ?? '-' }}</p></td>
+                        <td class="py-5 px-4"><p class="text-black dark:text-white">{{ s.complications ?? '-' }}</p></td>
+
+                        <td class="py-5 px-4">
+                            <div class="flex items-center gap-2">
+                                <app-badge variant="light" size="sm" [color]="sessionStatusColorFn(s)">
+                                    {{ sessionStatusLabelFn(s) }}
+                                </app-badge>
+
+                                <app-badge *ngIf="isInadequateFn(s)" variant="light" size="sm" color="error">
+                                    ALERT
+                                </app-badge>
+                            </div>
+                        </td>
+
+                        <td *ngIf="canSeeActionsColumn" class="py-5 px-4">
+                            <div *ngIf="isNurse && viewMode === 'TREATMENT'" class="flex flex-wrap gap-2">
+                                <app-button size="sm" variant="outline" [disabled]="!canEditSessionFn(s)" (btnClick)="edit.emit(s)">Edit</app-button>
+                                <app-button size="sm" variant="primary" [disabled]="!canEditSessionFn(s)" (btnClick)="end.emit(s)">End</app-button>
+                            </div>
+
+                            <div *ngIf="isAdmin" class="mt-2">
+                                <app-button size="sm" variant="outline" (btnClick)="delete.emit(s)">
+                                    <span class="text-red-600">Delete</span>
+                                </app-button>
+                            </div>
+                            <div *ngIf="canViewReport && s.weightAfter != null" class="mt-2">
+                                <app-button size="sm" variant="outline" (btnClick)="viewReport.emit(s)">
+                                    View Report
+                                </app-button>
+                            </div>
+                            <div *ngIf="canViewReport && s.weightAfter != null" class="mt-2">
+                                <app-button size="sm" variant="outline" (btnClick)="downloadReport(s.id)">
+                                    PDF
+                                </app-button>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+
+                </table>
+            </div>
+        </ng-container>
+
+        <ng-template #emptyState>
+            <div class="rounded border border-stroke p-6 dark:border-strokedark">
+                <p class="text-sm text-gray-600 dark:text-gray-300">No sessions found for current filters.</p>
+            </div>
+        </ng-template>
+    </ng-container>
+</div>

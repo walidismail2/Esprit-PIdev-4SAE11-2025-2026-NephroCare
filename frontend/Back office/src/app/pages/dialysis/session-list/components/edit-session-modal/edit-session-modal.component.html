@@ -1,0 +1,35 @@
+<app-modal
+        [open]="open"
+        title="Edit Session (Correction)"
+        width="md"
+        [busy]="busy"
+        (closed)="closed.emit()"
+>
+    <div class="mb-4">
+        <label class="mb-2 block text-black dark:text-white">Weight Before (kg) <span class="text-red-600">*</span></label>
+        <input type="number" [(ngModel)]="weightBefore" min="1" max="500"
+               class="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input" />
+        <div *ngIf="attempted && (weightBefore == null || weightBefore <= 0 || weightBefore > 500)" class="mt-1 text-sm text-red-600">
+            Weight must be between 1 and 500.
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <label class="mb-2 block text-black dark:text-white">Blood Pressure (optional)</label>
+        <input type="text" [(ngModel)]="preBP" placeholder="120/80"
+               class="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input" />
+        <div *ngIf="attempted && bpInvalid()" class="mt-1 text-sm text-red-600">
+            Format must be like 120/80.
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <label class="mb-2 block text-black dark:text-white">Complications (optional)</label>
+        <input type="text" [(ngModel)]="complications"
+               class="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input" />
+    </div>
+
+    <app-button size="md" variant="primary" [disabled]="busy || invalid()" (btnClick)="onSubmit()">
+        Save Changes
+    </app-button>
+</app-modal>

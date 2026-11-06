@@ -1,0 +1,568 @@
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ÉTAPE 4 — badge-viewer.component.scss
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// ── Variables ─────────────────────────────────────
+$red:    #dc2626;
+$red-dk: #991b1b;
+$blue:   #1d4ed8;
+$blue-dk:#1e3a8a;
+$green:  #16a34a;
+$amber:  #d97706;
+$dark:   #0f172a;
+$gray:   #64748b;
+$bg:     #f1f5f9;
+$white:  #ffffff;
+
+// ── Reset & Base ──────────────────────────────────
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:host {
+  display: block;
+  background: $bg;
+  min-height: 100vh;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+// ══════════════════════════════════════════════════
+// CHARGEMENT
+// ══════════════════════════════════════════════════
+.bv-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 1.25rem;
+  background: $bg;
+}
+
+.bv-loading-spinner {
+  width: 72px; height: 72px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #1d4ed8, #6366f1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem;
+  animation: loadPulse 1.5s ease-in-out infinite;
+  box-shadow: 0 8px 24px rgba(29,78,216,.35);
+
+  @keyframes loadPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%       { transform: scale(1.1); opacity: .8; }
+  }
+}
+
+.bv-loading p {
+  font-size: .9rem;
+  color: $gray;
+  font-weight: 500;
+}
+
+// ══════════════════════════════════════════════════
+// ERREUR
+// ══════════════════════════════════════════════════
+.bv-error-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1.5rem;
+  background: $bg;
+}
+
+.bve-card {
+  background: $white;
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,.12);
+
+  .bve-icon { font-size: 3rem; margin-bottom: 1rem; }
+
+  h2 {
+    font-size: 1.2rem; font-weight: 800;
+    color: $dark; margin-bottom: .5rem;
+  }
+
+  p {
+    font-size: .85rem; color: $gray;
+    line-height: 1.65; margin-bottom: 1rem;
+  }
+
+  .bve-tip {
+    background: #eff6ff; border: 1px solid #bfdbfe;
+    border-radius: 10px; padding: .75rem 1rem;
+    font-size: .75rem; color: #1e40af;
+    display: flex; align-items: flex-start; gap: .4rem;
+    text-align: left;
+    i { flex-shrink: 0; margin-top: .1rem; }
+  }
+}
+
+// ══════════════════════════════════════════════════
+// PAGE PRINCIPALE
+// ══════════════════════════════════════════════════
+.bv-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 0 0 2rem;
+  gap: 0;
+}
+
+// ── Barre d'alerte top ────────────────────────────
+.bv-top-bar {
+  width: 100%;
+  max-width: 520px;
+  background: $red;
+  color: $white;
+  padding: .65rem 1rem;
+  font-size: .7rem;
+  font-weight: 900;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  animation: topBarPulse 2s ease-in-out infinite;
+
+  @keyframes topBarPulse {
+    0%, 100% { background: $red; }
+    50%       { background: darken($red, 8%); }
+  }
+
+  // Arrondi haut uniquement sur grands écrans
+  @media (min-width: 521px) {
+    border-radius: 0 0 0 0;
+    margin-top: 1rem;
+    border-radius: 14px 14px 0 0;
+  }
+}
+
+.bv-pulse-icon {
+  animation: iconShake 2s ease-in-out infinite;
+
+  @keyframes iconShake {
+    0%, 70%, 100% { transform: scale(1); }
+    75% { transform: scale(1.3); }
+    85% { transform: scale(.9); }
+    90% { transform: scale(1.1); }
+  }
+}
+
+// ── Carte principale ──────────────────────────────
+.bv-card {
+  width: 100%;
+  max-width: 520px;
+  background: $white;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.15), 0 4px 16px rgba(0,0,0,.08);
+  animation: cardSlideUp .5s cubic-bezier(.34,1.56,.64,1) both;
+
+  @media (min-width: 521px) {
+    border-radius: 0 0 20px 20px;
+  }
+
+  @keyframes cardSlideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+}
+
+// ══════════════════════════════════════════════════
+// ZONE ROUGE
+// ══════════════════════════════════════════════════
+.bv-red-zone {
+  background: linear-gradient(150deg, #7f1d1d 0%, #b91c1c 40%, #ef4444 100%);
+  color: $white;
+  padding: 1.4rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+
+  // Cercle décoratif
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50px; right: -50px;
+    width: 150px; height: 150px;
+    background: rgba(255,255,255,.05);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+}
+
+.bvr-alert-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .65rem;
+  margin-bottom: 1rem;
+}
+
+.bvr-shake {
+  font-size: 1.5rem;
+  display: inline-block;
+  animation: shakePulse 1.8s infinite;
+
+  @keyframes shakePulse {
+    0%, 75%, 100% { transform: rotate(0) scale(1); }
+    80%  { transform: rotate(-15deg) scale(1.1); }
+    88%  { transform: rotate(15deg) scale(1.1); }
+    94%  { transform: rotate(-8deg) scale(1.05); }
+  }
+}
+
+.bvr-alert-text {
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .14em;
+  opacity: .92;
+}
+
+// Boîte condition principale
+.bvr-condition-box {
+  background: rgba(255,255,255,.16);
+  border: 2px solid rgba(255,255,255,.32);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  text-align: center;
+  margin-bottom: 1.1rem;
+  backdrop-filter: blur(4px);
+}
+
+.bvr-condition-main {
+  font-size: 1.7rem;
+  font-weight: 900;
+  letter-spacing: .03em;
+  text-shadow: 0 3px 10px rgba(0,0,0,.25);
+  line-height: 1.15;
+}
+
+.bvr-condition-label {
+  font-size: .68rem;
+  opacity: .78;
+  margin-top: .3rem;
+  letter-spacing: .06em;
+}
+
+// Boîte médicaments interdits
+.bvr-no-drug-box {
+  background: rgba(0,0,0,.3);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 12px;
+  padding: .85rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.bvr-nd-title {
+  font-size: .65rem;
+  font-weight: 900;
+  letter-spacing: .12em;
+  margin-bottom: .45rem;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  i { font-size: .8rem; }
+}
+
+.bvr-nd-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .32rem;
+  margin-bottom: .4rem;
+}
+
+.bvr-nd-pill {
+  background: rgba(255,255,255,.2);
+  border: 1.5px solid rgba(255,255,255,.38);
+  border-radius: 6px;
+  padding: .28rem .7rem;
+  font-size: .74rem;
+  font-weight: 800;
+}
+
+.bvr-nd-reason {
+  font-size: .67rem;
+  opacity: .85;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: .32rem;
+  i { font-size: .75rem; color: #fde68a; }
+}
+
+// Groupe sanguin
+.bvr-blood-row {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 10px;
+  padding: .65rem 1rem;
+}
+
+.bvr-blood-drop  { font-size: 1.3rem; }
+.bvr-blood-label { font-size: .65rem; opacity: .82; flex: 1; }
+.bvr-blood-value {
+  font-size: 1.3rem;
+  font-weight: 900;
+  text-shadow: 0 2px 6px rgba(0,0,0,.2);
+}
+
+// ══════════════════════════════════════════════════
+// ZONE BLANCHE
+// ══════════════════════════════════════════════════
+.bv-white-zone {
+  background: $white;
+  padding: 1.4rem 1.5rem;
+  border-bottom: 2px solid #dbeafe;
+}
+
+// Patient
+.bvw-patient-row {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.bvw-avatar {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 14px rgba(59,130,246,.3);
+  flex-shrink: 0;
+}
+
+.bvw-patient-name { font-size: 1.15rem; font-weight: 900; color: $dark; }
+.bvw-patient-age  { font-size: .78rem; color: $gray; margin-top: .18rem; }
+
+// Passion
+.bvw-passion-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 1.5px solid #bbf7d0;
+  border-radius: 10px;
+  padding: .55rem .9rem;
+  margin-bottom: 1rem;
+}
+
+.bvw-passion-emoji { font-size: 1.15rem; }
+.bvw-passion-text  {
+  font-size: .72rem;
+  font-weight: 900;
+  color: #166534;
+  letter-spacing: .07em;
+}
+
+// Section label
+.bvw-section-title {
+  font-size: .65rem;
+  font-weight: 800;
+  color: $gray;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  margin-bottom: .55rem;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+
+// Traitements
+.bvw-treatments-box {
+  background: #fffbeb;
+  border: 1.5px solid #fde68a;
+  border-radius: 12px;
+  padding: .85rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.bvw-treatment-item {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .35rem 0;
+
+  & + .bvw-treatment-item {
+    border-top: 1px dashed #fde68a;
+    margin-top: .15rem;
+  }
+}
+
+.bvw-treatment-icon {
+  width: 30px; height: 30px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: $white;
+  font-size: .75rem;
+  flex-shrink: 0;
+}
+
+.bvw-treatment-name {
+  font-size: .85rem;
+  font-weight: 700;
+  color: $dark;
+  line-height: 1.35;
+}
+
+.bvw-no-treatment { font-size: .78rem; color: $gray; padding: .3rem 0; }
+
+// Bilan
+.bvw-bilan-row {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  font-size: .8rem;
+  color: $gray;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: .55rem .8rem;
+  border: 1px solid #e2e8f0;
+
+  strong { font-weight: 800; color: $dark; }
+  .bvw-bilan-status { color: $green; font-weight: 700; margin-left: auto; }
+}
+
+// ══════════════════════════════════════════════════
+// ZONE BLEUE
+// ══════════════════════════════════════════════════
+.bv-blue-zone {
+  background: linear-gradient(150deg, #1e3a8a 0%, #1d4ed8 60%, #3b82f6 100%);
+  color: $white;
+  padding: 1.4rem 1.5rem;
+}
+
+.bvb-contact-label {
+  font-size: .66rem;
+  font-weight: 900;
+  letter-spacing: .12em;
+  opacity: .85;
+  margin-bottom: .55rem;
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+}
+
+// Numéro de téléphone — très grand, cliquable
+.bvb-phone-number {
+  display: block;
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-align: center;
+  color: $white;
+  text-decoration: none;
+  margin: .3rem 0;
+  text-shadow: 0 3px 10px rgba(0,0,0,.2);
+  font-variant-numeric: tabular-nums;
+
+  &:hover { opacity: .9; }
+}
+
+.bvb-phone-hint {
+  text-align: center;
+  font-size: .67rem;
+  opacity: .72;
+  margin-bottom: .9rem;
+}
+
+.bvb-clinic-row {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.24);
+  border-radius: 10px;
+  padding: .6rem .9rem;
+  font-size: .8rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+// Bouton appel principal
+.bvb-call-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .65rem;
+  width: 100%;
+  padding: 1rem;
+  background: $white;
+  color: $blue;
+  border: none;
+  border-radius: 14px;
+  font-size: .95rem;
+  font-weight: 900;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0,0,0,.22);
+  letter-spacing: .02em;
+  transition: all .2s cubic-bezier(.34,1.56,.64,1);
+
+  i {
+    font-size: 1.15rem;
+    color: $green;
+  }
+
+  &:hover {
+    transform: scale(1.03);
+    box-shadow: 0 8px 28px rgba(0,0,0,.28);
+  }
+
+  &:active {
+    transform: scale(.98);
+  }
+}
+
+// ══════════════════════════════════════════════════
+// INFOS BAS DE PAGE
+// ══════════════════════════════════════════════════
+.bv-scan-info {
+  width: 100%;
+  max-width: 520px;
+  background: #fef9c3;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  padding: .55rem 1rem;
+  font-size: .7rem;
+  color: #92400e;
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  margin-top: .75rem;
+
+  strong { font-weight: 800; }
+}
+
+.bv-footer {
+  width: 100%;
+  max-width: 520px;
+  text-align: center;
+  padding: 1rem;
+  font-size: .7rem;
+  color: $gray;
+  margin-top: .25rem;
+}
+
+// ══════════════════════════════════════════════════
+// RESPONSIVE MOBILE (pas de marges latérales)
+// ══════════════════════════════════════════════════
+@media (max-width: 520px) {
+  .bv-page     { padding: 0; }
+  .bv-top-bar  { border-radius: 0; margin-top: 0; }
+  .bv-card     { border-radius: 0; box-shadow: none; }
+  .bv-scan-info, .bv-footer { border-radius: 0; }
+}

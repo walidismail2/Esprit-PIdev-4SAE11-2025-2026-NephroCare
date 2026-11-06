@@ -1,0 +1,19 @@
+@if (open) {
+    <div class="backdrop" (click)="onBackdropClick()">
+        <div [class]="dialogClass" (click)="stop($event)">
+            <div class="dialog-header">
+                <div class="dialog-title">{{ title }}</div>
+
+                @if (closable) {
+                    <button type="button" class="icon-btn" (click)="closed.emit()" [disabled]="busy" aria-label="Close">
+                        ✕
+                    </button>
+                }
+            </div>
+
+            <div class="dialog-body">
+                <ng-content></ng-content>
+            </div>
+        </div>
+    </div>
+}

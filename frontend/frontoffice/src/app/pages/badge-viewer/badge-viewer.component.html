@@ -1,0 +1,171 @@
+<!-- ① LOADING -->
+<div class="bv-loading" *ngIf="loading">
+  <div class="bv-loading-spinner">
+    <i class="fas fa-shield-alt"></i>
+  </div>
+  <p>Loading medical badge...</p>
+</div>
+
+<!-- ② ERROR -->
+<div class="bv-error-page" *ngIf="hasError && !loading">
+  <div class="bve-card">
+    <div class="bve-icon">⚠️</div>
+    <h2>Unreadable Badge</h2>
+    <p>
+      The QR Code does not contain valid medical data.<br/>
+      Please contact the emergency service directly.
+    </p>
+    <div class="bve-tip">
+      <i class="fas fa-info-circle"></i>
+      This badge may have been created with an older version of the application.
+    </div>
+  </div>
+</div>
+
+<!-- ③ FULL MEDICAL PAGE -->
+<div class="bv-page" *ngIf="badge && !loading">
+
+  <!-- Flashing alert bar at the top -->
+  <div class="bv-top-bar">
+    <i class="fas fa-triangle-exclamation bv-pulse-icon"></i>
+    <span>EMERGENCY MEDICAL DATA</span>
+    <i class="fas fa-triangle-exclamation bv-pulse-icon"></i>
+  </div>
+
+  <!-- ══════════════ MAIN CARD ══════════════ -->
+  <div class="bv-card">
+
+    <!-- ───── RED ZONE : Critical condition ───── -->
+    <div class="bv-red-zone">
+
+      <div class="bvr-alert-row">
+        <span class="bvr-shake">⚠️</span>
+        <span class="bvr-alert-text">MEDICAL EMERGENCY</span>
+        <span class="bvr-shake">⚠️</span>
+      </div>
+
+      <!-- Primary condition — very large text -->
+      <div class="bvr-condition-box">
+        <div class="bvr-condition-main">{{ badge.condition }}</div>
+        <div class="bvr-condition-label">Primary medical condition</div>
+      </div>
+
+      <!-- Contraindicated medications -->
+      <div class="bvr-no-drug-box" *ngIf="badge.allergies && badge.allergies.length > 0">
+        <div class="bvr-nd-title">
+          <i class="fas fa-ban"></i>
+          DO NOT ADMINISTER
+        </div>
+        <div class="bvr-nd-pills">
+          <span class="bvr-nd-pill" *ngFor="let a of badge.allergies">{{ a }}</span>
+        </div>
+        <div class="bvr-nd-reason" *ngIf="badge.allergyReason">
+          <i class="fas fa-bolt"></i>
+          {{ badge.allergyReason }}
+        </div>
+      </div>
+
+      <!-- Blood type -->
+      <div class="bvr-blood-row">
+        <span class="bvr-blood-drop">🩸</span>
+        <span class="bvr-blood-label">Blood Type</span>
+        <span class="bvr-blood-value">{{ badge.bloodGroup }}</span>
+      </div>
+
+    </div>
+
+    <!-- ───── WHITE ZONE : Patient + Treatments ───── -->
+    <div class="bv-white-zone">
+
+      <!-- Patient identity -->
+      <div class="bvw-patient-row">
+        <div class="bvw-avatar">👤</div>
+        <div class="bvw-patient-info">
+          <div class="bvw-patient-name">{{ badge.patientName }}</div>
+          <div class="bvw-patient-age" *ngIf="badge.patientAge">{{ badge.patientAge }}</div>
+        </div>
+      </div>
+
+      <!-- Passion / Activity -->
+      <div class="bvw-passion-tag" *ngIf="badge.passion">
+        <span class="bvw-passion-emoji">{{ badge.passionIcon }}</span>
+        <span class="bvw-passion-text">PASSION: {{ badge.passion | uppercase }}</span>
+      </div>
+
+      <!-- Treatments label -->
+      <div class="bvw-section-title">
+        <i class="fas fa-pills" style="color:#d97706;"></i>
+        Vital Treatments
+      </div>
+
+      <!-- Treatments list -->
+      <div class="bvw-treatments-box">
+        <div class="bvw-treatment-item" *ngFor="let t of badge.treatments">
+          <div class="bvw-treatment-icon">
+            <i class="fas fa-capsules"></i>
+          </div>
+          <span class="bvw-treatment-name">{{ t }}</span>
+        </div>
+        <div class="bvw-no-treatment"
+             *ngIf="!badge.treatments || badge.treatments.length === 0">
+          No treatments recorded
+        </div>
+      </div>
+
+      <!-- Lab results -->
+      <div class="bvw-bilan-row" *ngIf="badge.creatinine">
+        <i class="fas fa-flask"></i>
+        <span>Latest lab result:</span>
+        <strong>{{ badge.creatinine }}</strong>
+        <span class="bvw-bilan-status" *ngIf="badge.lastExam">
+          ({{ badge.lastExam }})
+        </span>
+      </div>
+
+    </div>
+
+    <!-- ───── BLUE ZONE : Emergency contact ───── -->
+    <div class="bv-blue-zone">
+
+      <div class="bvb-contact-label">
+        <i class="fas fa-phone"></i>
+        PHARMACY EMERGENCY — DIRECT LINE 24/7
+      </div>
+
+      <!-- Clickable number → direct call -->
+      <a [href]="'tel:' + phoneClean" class="bvb-phone-number">
+        {{ badge.emergencyPhone }}
+      </a>
+      <div class="bvb-phone-hint">Tap to call directly</div>
+
+      <!-- Clinic -->
+      <div class="bvb-clinic-row">
+        <i class="fas fa-hospital"></i>
+        {{ badge.clinicName }}
+      </div>
+
+      <!-- Main call button -->
+      <a [href]="'tel:' + phoneClean" class="bvb-call-button">
+        <i class="fas fa-phone-volume"></i>
+        Call Now
+      </a>
+
+    </div>
+
+  </div>
+  <!-- end .bv-card -->
+
+  <!-- Scan timestamp -->
+  <div class="bv-scan-info">
+    <i class="fas fa-clock"></i>
+    <span>
+      Scanned on <strong>{{ scanTime }}</strong>
+    </span>
+  </div>
+
+  <!-- Footer -->
+  <div class="bv-footer">
+    🛡️ Passion Shield Badge — Nephrology Clinic
+  </div>
+
+</div>

@@ -1,0 +1,44 @@
+<app-modal
+        [open]="open"
+        title="End Session & Calculate Metrics"
+        width="md"
+        [busy]="busy"
+        (closed)="closed.emit()"
+>
+    <div class="mb-4">
+        <label class="mb-2 block text-black dark:text-white">Weight After (kg) <span class="text-red-600">*</span></label>
+        <input type="number" [(ngModel)]="weightAfter" min="1" max="500"
+               class="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input" />
+        <div *ngIf="attempted && (weightAfter == null || weightAfter <= 0 || weightAfter > 500)" class="mt-1 text-sm text-red-600">
+            Weight after must be between 1 and 500.
+        </div>
+        <div *ngIf="attempted && afterNotLowerThanBefore()" class="mt-1 text-sm text-red-600">
+            Weight after must be lower than weight before.
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <label class="mb-2 block text-black dark:text-white">Pre-Dialysis Urea (mg/dL) <span class="text-red-600">*</span></label>
+        <input type="number" [(ngModel)]="preUrea" min="1" max="5000"
+               class="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input" />
+        <div *ngIf="attempted && (preUrea == null || preUrea <= 0 || preUrea > 5000)" class="mt-1 text-sm text-red-600">
+            Pre-urea must be between 1 and 5000.
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <label class="mb-2 block text-black dark:text-white">Post-Dialysis Urea (mg/dL) <span class="text-red-600">*</span></label>
+        <input type="number" [(ngModel)]="postUrea" min="1" max="5000"
+               class="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input" />
+        <div *ngIf="attempted && (postUrea == null || postUrea <= 0 || postUrea > 5000)" class="mt-1 text-sm text-red-600">
+            Post-urea must be between 1 and 5000.
+        </div>
+        <div *ngIf="attempted && postNotLowerThanPre()" class="mt-1 text-sm text-red-600">
+            Post-urea must be lower than pre-urea.
+        </div>
+    </div>
+
+    <app-button size="md" variant="primary" [disabled]="busy" (btnClick)="onSubmit()">
+        Save & Calculate
+    </app-button>
+</app-modal>
