@@ -1,7 +1,9 @@
+import { environment } from '../environments/environment';
+
 const keycloakConfig = {
-  url: 'http://localhost:8180',
-  realm: 'nephro-realm',
-  clientId: 'backoffice-ui'
+  url: environment.keycloakUrl,
+  realm: environment.realm,
+  clientId: environment.clientId
 };
 
 export default keycloakConfig;

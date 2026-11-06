@@ -23,12 +23,19 @@ docker build -t nephrocare/pharmacy-service:local          --build-arg SERVICE_P
 docker build -t nephrocare/monitoring-service:local         --build-arg SERVICE_PATH=monitoring-service/monitoring-service .
 ```
 
-### 2) Apply Kubernetes manifests
+### 2) Create secrets, then apply Kubernetes manifests
+
+Copy `k8s/nephrocare-secrets.example.yaml` to `k8s/nephrocare-secrets.yaml`, replace every `CHANGE_ME`, then apply that file before the rest. The real secret file is gitignored.
 
 ```powershell
 Set-Location ..
+kubectl apply -f .\k8s\nephrocare-secrets.yaml
 kubectl apply -f .\k8s\nephrocare-backend.yaml
 ```
+
+For a public host, change `PUBLIC_API_URL`, `PUBLIC_KEYCLOAK_URL`, `FRONT_ORIGIN`, `BACK_ORIGIN`, and `CORS_ALLOWED_ORIGINS` in the `nephrocare-common` ConfigMap, and point `KEYCLOAK_REALM_ISSUER` at the HTTPS issuer browsers will use.
+
+The kidney CT model is mounted from this machine at `Kidney Project IA/kidney_model_improved`. If the project folder moves, edit the `kidney-ai` hostPath in `nephrocare-backend.yaml`. A remote cluster needs that file mounted at `/models/best_cnn_kidney.keras`; the image does not contain it, and `*.keras` stays out of Git.
 
 ### 3) Access from your local frontend (recommended: port-forward)
 

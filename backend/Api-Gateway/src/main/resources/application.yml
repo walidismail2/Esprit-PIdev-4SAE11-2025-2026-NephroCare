@@ -4,28 +4,17 @@ server:
 spring:
   application:
     name: Api-Gateway
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:http://localhost:8180/realms/nephro-realm}
+          jwk-set-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI:http://localhost:8180/realms/nephro-realm/protocol/openid-connect/certs}
   cloud:
     gateway:
       default-filters:
         # Avoid CORS failure: multiple Access-Control-Allow-Origin values.
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
-      globalcors:
-        add-to-simple-url-handler-mapping: true
-        corsConfigurations:
-          '[/**]':
-            allowedOrigins:
-              - "http://localhost:4369"
-              - "http://localhost:4200"
-            allowedMethods:
-              - GET
-              - POST
-              - PUT
-              - PATCH
-              - DELETE
-              - OPTIONS
-            allowedHeaders:
-              - "*"
-            allowCredentials: true
       discovery:
         locator:
           enabled: false

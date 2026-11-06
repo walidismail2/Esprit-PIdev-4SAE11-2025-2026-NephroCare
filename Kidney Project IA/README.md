@@ -1,3 +1,7 @@
+# Kidney CT training
+
+This folder trains the classifier. The running API is `kidney-ai` at the repository root, and the staff app calls it through `/kidney-ai/predict`. The project overview is in the root README.
+
 # Improved Kidney Disease Classification
 
 This repository contains an improved implementation of a kidney disease classification system using deep learning. The system can identify four types of kidney conditions from CT scans:

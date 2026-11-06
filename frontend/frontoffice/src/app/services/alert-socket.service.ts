@@ -4,6 +4,7 @@ const SockJS = (_SockJS as any).default || _SockJS;
 
 import { Client, IMessage } from '@stomp/stompjs';
 import { Subject, BehaviorSubject } from 'rxjs';
+import { KeycloakService } from 'keycloak-angular';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -12,6 +13,9 @@ import { environment } from '../../environments/environment';
 export class AlertSocketService {
 
     private stompClient!: Client;
+    private connecting = false;
+
+    constructor(private keycloak: KeycloakService) {}
 
     private alertSubject = new Subject<any>();
     private criticalCountSubject = new BehaviorSubject<number>(0);
@@ -27,13 +31,16 @@ export class AlertSocketService {
 
     connect() {
 
-        // ⚠️ éviter double connexion
-        if (this.stompClient && this.stompClient.active) {
+        if (this.connecting || (this.stompClient && this.stompClient.active)) {
             return;
         }
+        this.connecting = true;
 
+        void this.keycloak.getToken().then((token) => {
         this.stompClient = new Client({
-            webSocketFactory: () => new SockJS(`${environment.apiUrl}/ws-alerts`),
+            webSocketFactory: () => new SockJS(
+                `${environment.apiUrl}/ws-alerts?access_token=${encodeURIComponent(token)}`
+            ),
 
             reconnectDelay: 5000, // 🔥 plus rapide
             heartbeatIncoming: 4000,
@@ -87,6 +94,10 @@ export class AlertSocketService {
         };
 
         this.stompClient.activate();
+        this.connecting = false;
+        }).catch(() => {
+            this.connecting = false;
+        });
     }
 
     disconnect() {

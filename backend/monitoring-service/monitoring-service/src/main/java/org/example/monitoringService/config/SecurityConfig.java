@@ -20,7 +20,7 @@ public class SecurityConfig {
                 .cors(cors -> {})
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/error", "/actuator/health", "/actuator/info", "/ws-alerts", "/ws-alerts/**").permitAll()
+                        .requestMatchers("/error", "/actuator/health", "/actuator/info").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}));
         return http.build();

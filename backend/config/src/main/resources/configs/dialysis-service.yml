@@ -23,7 +23,7 @@ keycloak:
   realm: nephro-realm
   resource: dialysis-service
   credentials:
-    secret: ${DIALYSIS_KC_SECRET:j0QkFqdtpGOdphdpd5Rh3QNrWO9zPGrv}
+    secret: ${DIALYSIS_KC_SECRET:}
 
 dialysis:
   max-concurrent-sessions-per-shift: 10

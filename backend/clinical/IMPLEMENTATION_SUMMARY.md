@@ -1,5 +1,7 @@
 # Clinical Service Implementation Summary
 
+Module notes for the clinical service. The platform overview, including DevOps and the CT model, is in the repository root README.
+
 ## ✅ Completed CRUD Implementation
 
 The Clinical Service now has a fully functional, production-ready CRUD implementation with comprehensive features:

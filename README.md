@@ -1,88 +1,101 @@
-# NephroCare - Smart Nephrology Management Platform
+# NephroCare
 
-## Overview
+NephroCare is a nephrology platform built for the PIDEV program at Esprit School of Engineering, academic year 2025-2026. Staff and patients use two Angular applications. Clinical data lives in Spring Boot microservices behind one API gateway. A CT classifier and a Gemini-backed transplant note sit next to the clinical workflow.
 
-This project was developed as part of the **PIDEV - 3rd Year Engineering Program** at **Esprit School of Engineering** (Academic Year **2025-2026**).
+## Team
 
-NephroCare is a full-stack healthcare platform designed to support nephrology workflows, including clinical follow-up, hospitalization monitoring, diagnostics, dialysis tracking, and pharmacy management.
+- Walid Ismail
+- Aziz Ben Sghaier
+- Anas Souissi
+- Nour Matoussi
 
-## Features
+Esprit School of Engineering, Tunisia. PIDEV, 3rd year, 2025-2026.
 
-- Role-based authentication and access control (Keycloak)
-- Clinical module (consultations, triage, medical history)
-- Hospitalization module (vital signs, admissions, patient monitoring)
-- Diagnostic module (orders and result tracking)
-- Dialysis module (sessions and treatment lifecycle)
-- Pharmacy module (medications and prescription workflow)
-- Notifications and alerts for critical conditions
-- Back Office dashboard for operational supervision
+## What is where
 
-## Tech Stack
+| Path | Role |
+| --- | --- |
+| `frontend/frontoffice` | Patient application, port 4200 |
+| `frontend/Back office` | Staff application, port 4369 |
+| `backend` | Java microservices, gateway, discovery, config server |
+| `kidney-ai` | FastAPI service that scores a kidney CT image |
+| `Kidney Project IA` | Training code and the saved Keras model |
+| `k8s` | Kubernetes manifests, monitoring stack, and the local runbook |
+| `.github/workflows` | GitHub Actions for CI and the Kubernetes deploy |
+| `documentation/Architecture Logique.png` | Logical architecture diagram |
+| `backend/Jenkinsfile` | Alternate Jenkins pipeline |
 
-### Frontend
+## Clinical platform
 
-- Angular
-- TypeScript
-- Bootstrap / CSS
-- RxJS
+Keycloak issues the tokens. The gateway on port 8070 checks them and routes to:
 
-### Backend
+- `user-service` — accounts
+- `clinical` — consultations, triage, medical history, transplant candidacy
+- `Hospitalization-service` — admissions, rooms, vital signs, nutrition
+- `diagnostic-service` — orders and results
+- `dialysis-service` — treatments, sessions, nurse schedule, alerts
+- `pharmacy-service` — medications, stock, prescriptions
+- `order-service` — pharmacy delivery orders
+- `monitoring-service` — appointments and live alerts
 
-- Java
-- Spring Boot
-- Spring Cloud (API Gateway, Eureka Discovery)
-- MySQL
-- Keycloak (IAM / SSO)
+MySQL holds one database per service. Eureka and the config server are the Spring Cloud pieces around them.
 
-## Architecture
+## Machine learning
 
-The system follows a **microservices architecture**:
+Two models are wired into the product.
 
-- `Api-Gateway`
-- `discovery-service`
-- `user-service`
-- `clinical-service`
-- `Hospitalization-service`
-- `diagnostic-service`
-- `dialysis-service`
-- `pharmacy-service`
+**Kidney CT classification.** `Kidney Project IA` trains a MobileNetV2 classifier on CT slices. It labels an image as Cyst, Normal, Stone, or Tumor. The saved file is `Kidney Project IA/kidney_model_improved/best_cnn_kidney.keras`. That file is not stored in Git. `kidney-ai` loads it and exposes `POST /predict`. The staff app calls it from the kidney-scan page through the gateway path `/kidney-ai/**`. The response includes the label, the confidence, and a short follow-up recommendation. This is decision support for a clinician, not a diagnosis.
 
-Each service is independently deployable and communicates via REST APIs.
+**Transplant recommendation.** The clinical service can draft a transplant candidacy note with Gemini when `GEMINI_API_KEY` is set. The physician still owns the decision.
 
-## Contributors
+To train or re-evaluate the CT model, use `Kidney Project IA/README.md`. The CT dataset itself stays out of the repository (`Kidney Project IA/archive`).
 
-- [Your Name 1]
-- [Your Name 2]
-- [Your Name 3]
-- [Your Name 4]
+## DevOps
 
-## Academic Context
+Each Java service is built with the same `backend/Dockerfile`. The image build argument `SERVICE_PATH` selects the module. `backend/docker-compose.backend.yml` starts MySQL, Keycloak, the Java services, and the kidney API on one machine.
 
-Developed at **Esprit School of Engineering - Tunisia**  
-**PIDEV - 3A | 2025-2026**
+GitHub Actions:
 
-## Getting Started
+- `backend-ci.yml` runs Maven tests and checks that every service image builds.
+- `frontend-ci.yml` builds both Angular apps and can run a SonarQube gate when `SONAR_TOKEN` is set.
+- `cd-k8s.yml` pushes images to GitHub Container Registry and rolls them out with kubectl. The cluster kubeconfig is the `KUBE_CONFIG_DATA` repository secret.
 
-1. Clone the repository:
-  ```bash
-   git clone <your-repo-url>
-   cd <repo-folder>
-  ```
-2. Start infrastructure services:
-  - Keycloak
-  - MySQL
-  - Eureka Discovery
-3. Run backend microservices (Spring Boot).
-4. Run frontend apps:
-  - Front Office
-  - Back Office
-5. Access the platform from browser:
-  - Front Office: `http://localhost:4200`
-  - Back Office: `http://localhost:4369` (or your configured port)
+Kubernetes manifests live in `k8s/`. `k8s/README.md` is the local cluster guide. `k8s/RUNBOOK.md` is the stop and start checklist. `k8s/monitoring-stack.yaml` adds Prometheus, Alertmanager, and Grafana. Passwords are not committed: copy `k8s/nephrocare-secrets.example.yaml` to `k8s/nephrocare-secrets.yaml` and fill it in before `kubectl apply`.
 
-## Acknowledgments
+`backend/Jenkinsfile` is a second pipeline that builds the same images and can deploy the namespace `nephrocare`. `Dockerfile.jenkins` is the Jenkins controller image used for that setup. Sprint notes are in `docs/SPRINT-DEVOPS-STATUS.md`.
 
-- **Esprit School of Engineering**
-- Supervisors and teaching staff of the PIDEV program
-- Open-source communities behind Angular, Spring, and Keycloak
+## Run it locally
 
+Requirements: Docker, JDK 17, Node.js 20.
+
+1. Copy `backend/.env.backend.example` to `backend/.env` and replace every `CHANGE_ME`. Use letters and numbers only.
+2. From `backend/`:
+
+```bash
+docker compose -f docker-compose.backend.yml --env-file .env up --build
+```
+
+3. Patient app, from `frontend/frontoffice`:
+
+```bash
+npm ci
+npm start
+```
+
+4. Staff app, from `frontend/Back office`:
+
+```bash
+npm ci
+npm start
+```
+
+| Surface | URL |
+| --- | --- |
+| Patient app | http://localhost:4200 |
+| Staff app | http://localhost:4369 |
+| API gateway | http://localhost:8070 |
+| Keycloak | http://localhost:8180 |
+
+Demo account names are created from the passwords in `backend/.env` (`admin.user`, `doctor.user`, `nurse.user`, `patient.user`, `pharmacist.user`, `labtech.user`, `driver.user`).
+
+For a Kubernetes deploy instead of Compose, follow `k8s/README.md`.

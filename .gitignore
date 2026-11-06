@@ -10,6 +10,7 @@
 kubeconfig*.yaml
 kubeconfig*.yml
 *.kubeconfig
+k8s/nephrocare-secrets.yaml
 
 # Build output
 **/node_modules/

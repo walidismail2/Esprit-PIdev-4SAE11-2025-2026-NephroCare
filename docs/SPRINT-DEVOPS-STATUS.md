@@ -1,5 +1,7 @@
 # Sprint DevOps Status
 
+The current overview of CI, Kubernetes, and monitoring is in the repository root README. This file is the sprint checklist.
+
 This document tracks sprint progress for:
 - Docker generalization
 - CI/CD automation

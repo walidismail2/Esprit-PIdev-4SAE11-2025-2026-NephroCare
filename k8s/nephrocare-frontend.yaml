@@ -17,6 +17,17 @@ spec:
         - name: backoffice-ui
           image: nephrocare/backoffice-ui:latest
           imagePullPolicy: IfNotPresent
+          env:
+            - name: API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: nephrocare-common
+                  key: PUBLIC_API_URL
+            - name: KEYCLOAK_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: nephrocare-common
+                  key: PUBLIC_KEYCLOAK_URL
           ports:
             - containerPort: 80
 ---
@@ -54,6 +65,17 @@ spec:
         - name: frontoffice-ui
           image: nephrocare/frontoffice-ui:latest
           imagePullPolicy: IfNotPresent
+          env:
+            - name: API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: nephrocare-common
+                  key: PUBLIC_API_URL
+            - name: KEYCLOAK_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: nephrocare-common
+                  key: PUBLIC_KEYCLOAK_URL
           ports:
             - containerPort: 80
 ---

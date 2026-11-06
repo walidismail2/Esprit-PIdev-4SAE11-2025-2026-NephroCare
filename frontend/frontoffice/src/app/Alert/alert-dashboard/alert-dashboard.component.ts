@@ -57,6 +57,8 @@ export class AlertDashboardComponent implements OnInit, OnDestroy {
       error: () => this.loading = false
     });
 
+    this.socketService.connect();
+
     // 🔥 REAL-TIME (WebSocket)
     this.socketSub = this.socketService.alerts$.subscribe(newAlert => {
       if (!newAlert) return;
@@ -81,6 +83,7 @@ export class AlertDashboardComponent implements OnInit, OnDestroy {
   // ─────────────────────────────────────────
   ngOnDestroy(): void {
     this.socketSub?.unsubscribe();
+    this.socketService.disconnect();
   }
 
   // ─────────────────────────────────────────

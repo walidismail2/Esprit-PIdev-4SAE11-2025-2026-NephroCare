@@ -7,7 +7,7 @@ pipeline {
   }
 
   environment {
-    REPO_URL = 'https://github.com/medidfds/Esprit-PIdev-4SAE11-2025-2026-NephroCare.git'
+    REPO_URL = 'https://github.com/walidismail2/Esprit-PIdev-4SAE11-2025-2026-NephroCare.git'
     BRANCH_NAME = 'main'
     REGISTRY_NAMESPACE = ''
     DOCKERFILE_PATH = 'backend/Dockerfile'

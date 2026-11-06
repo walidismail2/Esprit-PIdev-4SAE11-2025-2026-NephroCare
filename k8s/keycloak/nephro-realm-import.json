@@ -28,7 +28,7 @@
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "secret": "j0QkFqdtpGOdphdpd5Rh3QNrWO9zPGrv",
+      "secret": "__DIALYSIS_KC_SECRET__",
       "redirectUris": [ "*" ],
       "webOrigins": [ "*" ]
     },
@@ -41,12 +41,12 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": true,
       "redirectUris": [
-        "http://localhost:4369/*",
-        "http://localhost:4200/*"
+        "__BACK_ORIGIN__/*",
+        "__FRONT_ORIGIN__/*"
       ],
       "webOrigins": [
-        "http://localhost:4369",
-        "http://localhost:4200"
+        "__BACK_ORIGIN__",
+        "__FRONT_ORIGIN__"
       ]
     },
     {
@@ -58,12 +58,12 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": true,
       "redirectUris": [
-        "http://localhost:4369/*",
-        "http://localhost:4200/*"
+        "__BACK_ORIGIN__/*",
+        "__FRONT_ORIGIN__/*"
       ],
       "webOrigins": [
-        "http://localhost:4369",
-        "http://localhost:4200"
+        "__BACK_ORIGIN__",
+        "__FRONT_ORIGIN__"
       ]
     }
   ],
@@ -76,7 +76,7 @@
       "lastName": "User",
       "email": "admin@nephrocare.local",
       "credentials": [
-        { "type": "password", "value": "Admin@123", "temporary": false }
+        { "type": "password", "value": "__DEMO_ADMIN_PASSWORD__", "temporary": false }
       ],
       "realmRoles": [ "admin" ]
     },
@@ -88,7 +88,7 @@
       "lastName": "User",
       "email": "doctor@nephrocare.local",
       "credentials": [
-        { "type": "password", "value": "Doctor@123", "temporary": false }
+        { "type": "password", "value": "__DEMO_DOCTOR_PASSWORD__", "temporary": false }
       ],
       "realmRoles": [ "doctor" ]
     },
@@ -100,7 +100,7 @@
       "lastName": "User",
       "email": "nurse@nephrocare.local",
       "credentials": [
-        { "type": "password", "value": "Nurse@123", "temporary": false }
+        { "type": "password", "value": "__DEMO_NURSE_PASSWORD__", "temporary": false }
       ],
       "realmRoles": [ "nurse" ]
     },
@@ -112,7 +112,7 @@
       "lastName": "User",
       "email": "patient@nephrocare.local",
       "credentials": [
-        { "type": "password", "value": "Patient@123", "temporary": false }
+        { "type": "password", "value": "__DEMO_PATIENT_PASSWORD__", "temporary": false }
       ],
       "realmRoles": [ "patient" ]
     },
@@ -124,7 +124,7 @@
       "lastName": "User",
       "email": "pharmacist@nephrocare.local",
       "credentials": [
-        { "type": "password", "value": "Pharmacist@123", "temporary": false }
+        { "type": "password", "value": "__DEMO_PHARMACIST_PASSWORD__", "temporary": false }
       ],
       "realmRoles": [ "pharmacist" ]
     },
@@ -136,7 +136,7 @@
       "lastName": "Tech",
       "email": "labtech@nephrocare.local",
       "credentials": [
-        { "type": "password", "value": "Labtech@123", "temporary": false }
+        { "type": "password", "value": "__DEMO_LABTECH_PASSWORD__", "temporary": false }
       ],
       "realmRoles": [ "lab-tech" ]
     },
@@ -148,7 +148,7 @@
       "lastName": "User",
       "email": "driver@nephrocare.local",
       "credentials": [
-        { "type": "password", "value": "Driver@123", "temporary": false }
+        { "type": "password", "value": "__DEMO_DRIVER_PASSWORD__", "temporary": false }
       ],
       "realmRoles": [ "driver" ]
     }

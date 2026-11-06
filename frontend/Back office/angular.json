@@ -40,6 +40,12 @@
           },
           "configurations": {
             "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ],
               "budgets": [
                 {
                   "type": "initial",
@@ -64,6 +70,7 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "defaultConfiguration": "development",
           "options": {
             "port": 4369
           },
