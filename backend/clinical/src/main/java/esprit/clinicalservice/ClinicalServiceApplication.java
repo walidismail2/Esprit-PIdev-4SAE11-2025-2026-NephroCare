@@ -1,11 +1,10 @@
 package esprit.clinicalservice;
 
-import org.springframework.ai.autoconfigure.openai.OpenAiAutoConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication(exclude = OpenAiAutoConfiguration.class)
+@SpringBootApplication
 @EnableScheduling
 public class ClinicalServiceApplication {
 
